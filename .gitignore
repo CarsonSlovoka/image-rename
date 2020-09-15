@@ -1,0 +1,9 @@
+MANIFEST
+dist/
+build/
+docs/en/*
+*.pyc
+*egg-info
+*.buildinfo
+*ipynb_checkpoints/
+jupyter
