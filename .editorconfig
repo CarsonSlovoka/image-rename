@@ -1,0 +1,19 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+end_of_line = crlf  # set to lf, cr, or crlf to control how line breaks are represented.
+insert_final_newline = true  # set to true to ensure file ends with a newline
+charset = utf-8
+indent_size = 4
+indent_style = space
+
+[*.{puml,nsi,nsh}]
+indent_style=tab
+
+[*.{html, j2, css}]
+indent_size = 2
+
+# [*.other]
