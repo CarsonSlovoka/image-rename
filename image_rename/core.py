@@ -5,6 +5,7 @@ from grid_extractor import show_img
 import cv2
 import numpy as np
 import asyncio
+import os
 
 
 def on_click_enter(e: tk.Event):
@@ -25,12 +26,24 @@ def imread(file, flag=cv2.IMREAD_UNCHANGED):
     return np_img
 
 
+class TkMixin:
+    __slots__ = ()
+
+    def get_widget(self, widget_name: str) -> Union[tk.Widget, None]:
+        root: tk.Tk = getattr(self, 'root')
+        if root.children.get(widget_name):
+            return root.children[widget_name]
+        else:
+            print(f'{KeyError(widget_name)}')
+            return None
+
+
 class EditBoxBase:
     __slots__ = ('root', 'canvas', 'entry')
 
     FONT_NAME = 'helvetica'
 
-    def __init__(self, width=400, height=300, **options):
+    def __init__(self, width=400, height=500, **options):
         self.root = root = tk.Tk()
         self.canvas = tk.Canvas(root, width=width, height=height, relief='raised')
         self.entry = self.init_ui()
@@ -41,78 +54,133 @@ class EditBoxBase:
     def init_ui(self) -> tk.Entry:
         raise NotImplementedError('init_ui')
 
-    def on_click_entry(self, e: tk.Event):
-        raise NotImplementedError('on_click_entry')
+    def on_click_commit(self, e: tk.Event):
+        raise NotImplementedError('on_click_commit')
 
 
-class RenameFactory(EditBoxBase):
-    __slots__ = ('img_path_list', 'img_next', 'next_img_flag')
+class RenameFactory(EditBoxBase, TkMixin):
+    __slots__ = ('img_path_list', 'next_img_flag',
+                 'dict_hotkey')
 
     ILLEGAL_CHARS = ('\\', '/', '?', '*', '<', '>', '|')  # These characters is not acceptable for the filename.
     FINISHED_MSG = 'FINISHED'
+    IMG_WINDOW_NAME = 'demo'
 
     def __init__(self, img_path_list: List[Path], **options):
         self.img_path_list = img_path_list
-        self.img_next: Union[np.ndarray, None] = None
+
+        self.dict_hotkey: Dict[str, List[str]] = options.get('dict_hotkey', dict(commit=['<Return>'], skip=[]))
         self.next_img_flag = False
-        super().__init__(**options)
+        EditBoxBase.__init__(self, **options)
 
     def init_ui(self):
         self.root.iconbitmap(Path(__file__).parent / Path('asset/icon/main.ico'))
         self.root.title('Rename Tool')
 
         self.canvas.pack()
-        label_title = tk.Label(self.root, text='Rename Tool')
-        label_title.config(font=(self.FONT_NAME, 24))
+        label_title = tk.Label(self.root, text='Rename Tool',
+                               font=(self.FONT_NAME, 48), bg='black', fg='white')
         self.put2canvas(label_title, 200, 25)
 
         label_input_info = tk.Label(self.root, text='New file name:')
         label_input_info.config(font=(self.FONT_NAME, 18))
         self.put2canvas(label_input_info, 200, 100)
 
-        entry = tk.Entry(self.root)
+        entry = tk.Entry(self.root, name='entry_new_name')
         entry.config(font=(self.FONT_NAME, 18), fg='blue', width=10)
         entry.focus_set()
         self.put2canvas(entry, 200, 140)
-        self.root.bind('<Return>', self.on_click_entry)
+        for key_name in self.dict_hotkey['commit']:
+            # self.root.bind('<Return>', self.on_click_commit)
+            self.root.bind(key_name, self.on_click_commit)
+        for key_name in self.dict_hotkey['skip']:
+            self.root.bind(key_name, self.on_click_skip)
 
-        btn_commit = tk.Button(text='Commit', command=lambda: self.on_click_entry(None), bg='brown', fg='white', font=(self.FONT_NAME, 12, 'bold'))
-        self.put2canvas(btn_commit, 200, 180)
+        self.put2canvas(tk.Button(text='Commit', command=lambda: self.on_click_commit(None),
+                                  width=20,
+                                  bg='brown', fg='white', font=(self.FONT_NAME, 12, 'bold')),
+                        200, 180)
+        self.put2canvas(tk.Button(text='Skip', command=lambda: self.on_click_skip(None),
+                                  bg='brown', fg='white', font=(self.FONT_NAME, 12, 'bold')),
+                        310, 180)
+        self.put2canvas(tk.Label(self.root, name='label_error_msg', text='', font=(self.FONT_NAME, 12, 'italic'), fg='red'),
+                        200, 220)
+
+        self.put2canvas(tk.Label(self.root, name='label_abs_img_path', text='', font=(self.FONT_NAME, 12)),
+                        40, 300)
+        self.put2canvas(
+            tk.Button(text='Open Source Folder', name='btn_open_source_dir',
+                      bg='brown', fg='white', font=(self.FONT_NAME, 12, 'bold'),
+                      command=lambda: self.on_click_open_source_dir(None)),
+            200, 350)
         return entry
+
+    def update_ui(self, widget_name, **options) -> tk.Widget:
+        """
+
+        :param widget_name::
+                - label_abs_img_path
+                - label_error_msg
+        :param options:: dict(text='...')
+        """
+        widget = self.get_widget(widget_name)
+        if widget:
+            widget.config(**options)
+            return widget
 
     async def main(self, interval: float):
         if len(self.img_path_list) == 0:
             print('empty img_path_list')
             return
-        for i in range(len(self.img_path_list) + 1):
-            img_path = self.img_path_list[min(i, len(self.img_path_list) - 1)]
-            if i == 0:
-                show_img(imread(img_path), delay_time=1)
-                continue
+        for img_path in self.img_path_list:
+            img_cur = imread(img_path)
+            show_flag = True
             self.next_img_flag = False
             while await asyncio.sleep(interval, True):
-                self.img_next = imread(img_path)
+                if cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1 or show_flag:
+                    # If the user closed the window, then show it again.
+                    show_img(img_cur, window_name=self.IMG_WINDOW_NAME, delay_time=1)
+                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
+                    show_flag = False
+
                 if self.next_img_flag:
+                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
                     break
         print('all done!')
         cv2.destroyAllWindows()
         return self.FINISHED_MSG
 
-    def on_click_entry(self, e: Union[tk.Event, None]):
+    def on_click_commit(self, _: Union[tk.Event, None]):
         new_file_name = self.entry.get()
         if new_file_name.strip() == '':
+            self.update_ui('label_error_msg', text=f'name is empty!')
             return
-        if new_file_name in self.ILLEGAL_CHARS:
-            print(f'ILLEGAL_CHARS: {self.ILLEGAL_CHARS}')
+        if [_ for _ in filter(lambda char: char in new_file_name, self.ILLEGAL_CHARS)]:
+            self.update_ui('label_error_msg', text=f'ILLEGAL_CHARS: {" ".join(self.ILLEGAL_CHARS)}')
             return
-        print(new_file_name)
+        org_img_path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
+        new_file = org_img_path.parent / Path(new_file_name + org_img_path.suffix)
+        # if new_file.exists():  # case insensitive
+        if new_file.name in os.listdir(new_file.parent):
+            self.update_ui('label_error_msg', text=f'FileExistsError: {org_img_path.name} -> {new_file.name}')
+            return
+        self.update_ui('label_error_msg', text=f'')
+        org_img_path.rename(new_file)
         self.entry.delete(0, len(new_file_name))
-        show_img(self.img_next, delay_time=1)
         self.next_img_flag = True
+
+    def on_click_open_source_dir(self, _: Union[tk.Event, None]):
+        img_path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
+        os.startfile(img_path.parent)
+
+    def on_click_skip(self, _: Union[tk.Event, None]):
+        self.next_img_flag = True
+        return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
 
 
 class ImageRenameApp(RenameFactory):
-    __slots__ = ('loop', 'dict_task', 'is_dead')
+    __slots__ = ('loop', 'dict_task',
+                 'is_dead',)
 
     def __init__(self, loop, img_path_list, **options):
         self.is_dead = False  # The app finished or not.
@@ -134,7 +202,7 @@ class ImageRenameApp(RenameFactory):
         while True:
             self.root.update()
             await asyncio.sleep(interval)
-            if self.dict_task['main']._result == self.FINISHED_MSG:
+            if getattr(self.dict_task['main'], '_result') == self.FINISHED_MSG:
                 break
         print('close updater')
         self.loop.stop()

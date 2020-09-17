@@ -31,7 +31,7 @@ def main(input_setting_path=None):
         [setattr(setting_module, member_name, str(member.resolve())) for member_name, member in inspect.getmembers(setting_module) if not member_name.startswith('_') and isinstance(member, Path)]
 
         loop = asyncio.get_event_loop()
-        app = ImageRenameApp(loop, config.img_path_list)
+        app = ImageRenameApp(loop, config.img_path_list, **dict(dict_hotkey=config.dict_hotkey))
         app.run()
 
 

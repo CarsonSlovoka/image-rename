@@ -22,5 +22,10 @@ class ImageRenameAppTests(TestCase):
         setting_file_path = Path(__file__).parent / Path('setting.py')
         cli_main(setting_file_path)
 
-    def test_feed_setting_by_arg(self):
+    def test_default(self):
         cli_main()
+
+
+if __name__ == '__main__':
+    ImageRenameAppTests().test_default()
+    ...
