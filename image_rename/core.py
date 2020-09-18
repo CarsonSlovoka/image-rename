@@ -1,5 +1,5 @@
 import tkinter as tk
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 from pathlib import Path
 from grid_extractor import show_img
 import cv2
@@ -60,7 +60,7 @@ class EditBoxBase:
 
 class RenameFactory(EditBoxBase, TkMixin):
     __slots__ = ('img_path_list', 'next_img_flag',
-                 'dict_hotkey')
+                 'dict_hotkey', 'window_size')
 
     ILLEGAL_CHARS = ('\\', '/', '?', '*', '<', '>', '|')  # These characters is not acceptable for the filename.
     FINISHED_MSG = 'FINISHED'
@@ -70,6 +70,7 @@ class RenameFactory(EditBoxBase, TkMixin):
         self.img_path_list = img_path_list
 
         self.dict_hotkey: Dict[str, List[str]] = options.get('dict_hotkey', dict(commit=['<Return>'], skip=[]))
+        self.window_size: Union[Tuple[int, int], None] = options.get('window_size')
         self.next_img_flag = False
         EditBoxBase.__init__(self, **options)
 
@@ -139,7 +140,9 @@ class RenameFactory(EditBoxBase, TkMixin):
             while await asyncio.sleep(interval, True):
                 if cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1 or show_flag:
                     # If the user closed the window, then show it again.
-                    show_img(img_cur, window_name=self.IMG_WINDOW_NAME, delay_time=1)
+                    show_img(img_cur, window_name=self.IMG_WINDOW_NAME,
+                             window_size=self.window_size if self.window_size is not None else -1,
+                             delay_time=1)
                     self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
                     show_flag = False
 
