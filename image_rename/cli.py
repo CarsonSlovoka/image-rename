@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .core import ImageRenameApp
 from .api.utils import work_dir
+from image_rename import __version__
 
 from typing import Any
 import types
@@ -12,9 +13,10 @@ import types
 
 def main(input_setting_path=None):
     import inspect
-    from argparse import ArgumentParser
+    import argparse
     if input_setting_path is None:
-        arg_parser = ArgumentParser()
+        arg_parser = argparse.ArgumentParser(prog='img_rename.exe', formatter_class=argparse.RawTextHelpFormatter)  # allow \n \t ...
+        arg_parser.add_argument('--version', action='version', version='%(prog)s:' + f'{__version__}')
         arg_parser.add_argument('setting', type=Path, help="path of setting.py")  # default=Path(__file__).parent / Path('config.py')
         args = arg_parser.parse_args()
     else:

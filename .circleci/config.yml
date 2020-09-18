@@ -1,0 +1,93 @@
+# https://circleci.com/docs/2.0/configuration-reference/
+# https://circleci.com/docs/2.0/env-vars/
+
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.7  # circleci/python
+
+    # working_directory: ~/project  # /home/circleci/project
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - run:
+          name: PIP INSTALL requirements  # If the name omitted, then use the command instead of it.
+          command: |
+            python3 -m venv env_$CIRCLE_PROJECT_REPONAME
+            . env_$CIRCLE_PROJECT_REPONAME/bin/activate
+            which pip
+            pip install --upgrade pip
+            pip install -r requirements.txt
+      - save_cache:
+          name: "SAVE CACHE: requirements.txt"
+          key: v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          paths:  # Put files or directories that are you want to restore.
+            - env_image-rename  # not supported `env_$CIRCLE_PROJECT_REPONAME`
+
+  install_project:
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - checkout
+      - restore_cache:
+          name: "RESTORE CACHE: requirements.txt and setup.py"
+          keys:
+            - v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Branch }}-{{ checksum "requirements.txt" }}
+            - v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-setup-{{ .Branch }}-{{ checksum "setup.py" }}
+      - run:
+          name: Running tests
+          command: |
+            . env_$CIRCLE_PROJECT_REPONAME/bin/activate
+            python setup.py test
+            pip install .
+      - save_cache:
+          name: "SAVE CACHE: setup.py"
+          key: v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-setup-{{ .Branch }}-{{ checksum "setup.py" }}
+          paths:
+            - env_image-rename
+
+  test:
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - checkout
+      - restore_cache:
+          name: "RESTORE CACHE: requirements.txt and setup.py"
+          key: v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-setup-{{ .Branch }}-{{ checksum "setup.py" }}
+      - run:
+          name: Test [entry_points]
+          command: |
+            ls .
+            . env_$CIRCLE_PROJECT_REPONAME/bin/activate
+            which img_rename
+            img_rename --version
+            img_rename --help
+      - store_artifacts:
+          path: test-reports/
+          destination: python_app
+
+workflows:
+  version: 2
+  wkf_name_main:
+    # triggers:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only: release
+
+      - install_project:
+          requires:
+              - build  # waiting for `pip install` is ready.
+          filters:
+            branches:
+              only: release
+
+      - test:
+          requires:
+            - install_project
+          filters:
+            branches:
+              only: release
