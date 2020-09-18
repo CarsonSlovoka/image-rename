@@ -1,0 +1,66 @@
+/*
+*/
+    .wy-nav-content {
+        max-width: 1000px;
+    }
+
+/*
+avatar.jpg
+*/
+    #sidebar-top-image>span {
+        width: 86px;
+        height: 86px;
+        background-repeat: no-repeat;
+        background-size: cover;
+        border: 4px solid #E8EAF6;
+        display: inline-block;
+        margin-top: 5px;
+        -webkit-box-shadow: 0 0 0 1px rgba(232,234,246,1);
+        -moz-box-shadow: 0 0 0 1px rgba(232,234,246,1);
+        box-shadow: 0 0 0 1px rgba(232,234,246,1);
+    }
+
+/*
+=====================
+font size
+=====================
+*/
+    body {
+        font-size: 125%;
+    }
+
+    .wy-plain-list-disc, .rst-content .section ul, .rst-content .toctree-wrapper ul, article ul {
+        line-height: 32px;
+    }
+
+    .wy-menu-vertical a {
+        font-size: 80%;
+    }
+
+
+/*
+=====================
++, -  color
+=====================
+*/
+
+    /* span before */
+    .wy-menu-vertical li span.toctree-expand {
+        color: #333333;
+    }
+
+    /* span after */
+
+    .wy-menu-vertical li.on a span.toctree-expand, .wy-menu-vertical li.current>a span.toctree-expand {
+        color: #ff0000;
+    }
+
+/*
+=====================
+toctree caption
+=====================
+*/
+   .toctree-wrapper.compound > p.caption {
+        font-family: "Lato", "proxima-nova","Helvetica Neue", "Arial", "sans-serif";
+        font-style: italic;
+    }
