@@ -1,0 +1,32 @@
+<head>
+  {% if analytics_id %}
+      <script async src="https://www.googletagmanager.com/gtag/js?id={{analytics_id}}"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{analytics_id}}');
+      </script>
+  {% endif %}
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<style> body {transform: scale(2.5); transform-origin: 0 0;} </style>
+
+	<link rel="stylesheet" type="text/css" href="select_language.css">
+	{# https://developers.google.com/speed/libraries/ #}
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>     
+
+<body>
+  <h1>{{ title }}<span>{{ title_span }}</span></h1>
+  <select name="form" onchange="location = this.value;">
+    <option value="hide">－－Language－－</option>
+
+    {% for lang_dir, value in dict_language.items() %}
+      <option value="{{lang_dir}}/{{master_file}}.html">{{value}}</option>
+    {% endfor %}
+  </select>
+</body>
+
+<footer></footer>
+<script type="text/javascript" src="select_language.js"></script>

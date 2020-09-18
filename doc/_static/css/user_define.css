@@ -1,0 +1,62 @@
+/* color */
+    .red {color:#aa0060; font-weight:bold;}
+    .abs-blue {color:#0000ff; font-weight:bold;}
+    .field-name {color:#0000ff; font-weight:bold;  background-color:#eeddee;}
+    .f-n {color:#0000ff; font-weight:bold;  background-color:#eeddee;}
+    .mark { background-color: #f9f2f4; border: 1px solid #d6d6d6;  color: #c7254e; border-radius: 4px;}
+    .black {color: black;}
+    .gray {color: gray;}
+    .silver {color: silver;}
+    .white {color: white;}
+    .maroon {color: maroon;}
+    .magenta {color: magenta;}
+    .fuchsia {color: fuchsia;}
+    .pink {color: pink;}
+    .orange {color: orange;}
+    .yellow {color: yellow;}
+    .lime {color: lime;}
+    .green {color: green;}
+    .olive {color: olive;}
+    .teal {color: teal;}
+    .cyan {color: cyan;}
+    .aqua {color: aqua;}
+    .blue {color: blue;}
+    .navy {color: navy;}
+    .purple {color: purple;}
+
+/* text */
+    .under {text-decoration: underline;}
+    .over {text-decoration: overline;}
+    .blink {text-decoration: blink;}
+    .line {text-decoration: line-through;}
+    .strike {text-decoration: line-through;}
+    .it {font-style: italic;}
+    .ob {font-style: oblique;}
+
+/* size */
+    .small {font-size: small;}
+    .large {font-size: large;}
+
+/* key */
+    .key {
+        position: relative;
+        display: inline-block;
+        margin: 0 1px 2px;
+        padding: 4px;
+        border: 1px solid #e6e6e6;
+        border-radius: 4px;
+        white-space: nowrap;
+        letter-spacing: .2px;
+        background: #fafafa;
+        font-family: inherit;
+        line-height: 1em;
+        transition: background-color .6s;
+
+        box-shadow: 1.5px 3px 0 rgba(0, 0, 0, 0.2), 0 0 0 2px #fff inset;  /* add shadow */
+    }
+
+/* code */
+    .cd {
+        font-family: Consolas,Menlo,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New,monospace,sans-serif;
+        background-color: #eff0f1;
+    }

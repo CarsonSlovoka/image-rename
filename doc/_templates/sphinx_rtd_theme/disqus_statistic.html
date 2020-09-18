@@ -1,0 +1,12 @@
+{% if disqus_short_name and disqus_url_root %}
+{% set display_disqus = True %}
+{% endif %}
+
+{%- if display_disqus %}
+  <script id="dsq-count-scr" src="https://{{ disqus_short_name }}.disqus.com/count.js" async></script>
+  <ul>
+  {%- for cur_page in list_page_name %}
+    <li>{{ Path(cur_page).name }} : <a href="{{ disqus_url_root }}/{{ cur_page }}.html#disqus_thread"></a></li>
+  {%- endfor %}
+  </ul>
+{%- endif %}
