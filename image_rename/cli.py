@@ -15,7 +15,7 @@ def main(input_setting_path=None):
     from argparse import ArgumentParser
     if input_setting_path is None:
         arg_parser = ArgumentParser()
-        arg_parser.add_argument("--setting", '-config', dest='setting', type=Path, help="path of setting.py", default=Path(__file__).parent / Path('config.py'))
+        arg_parser.add_argument('setting', type=Path, help="path of setting.py")  # default=Path(__file__).parent / Path('config.py')
         args = arg_parser.parse_args()
     else:
         args = types.SimpleNamespace(**dict(setting=input_setting_path))

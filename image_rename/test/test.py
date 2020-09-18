@@ -1,4 +1,5 @@
 from unittest import TestCase
+import unittest
 
 if 'env path':
     from pathlib import Path
@@ -23,7 +24,26 @@ class ImageRenameAppTests(TestCase):
         cli_main(setting_file_path)
 
     def test_default(self):
-        cli_main()
+        cli_main(Path(__file__).parent.parent / Path('config.py'))
+
+
+class CLITests(unittest.TestCase):
+
+    def test_show_version(self):
+        print(__version__)
+        self.assertTrue(len(__version__) > 0)
+
+
+def test_setup():
+    # suite_list = [unittest.TestLoader().loadTestsFromTestCase(class_module) for class_module in (CLITests, )]
+    # suite_class_set = unittest.TestSuite(suite_list)
+
+    suite_function_set = unittest.TestSuite()
+    suite_function_set.addTest(CLITests('test_show_version'))
+
+    suite = suite_function_set  # pick one of two: suite_class_set, suite_function_set
+    # unittest.TextTestRunner(verbosity=1).run(suite)  # self.verbosity = 0  # 0, 1, 2.  unittest.TextTestResult
+    return suite
 
 
 if __name__ == '__main__':
