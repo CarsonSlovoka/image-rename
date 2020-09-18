@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import asyncio
 import os
+import types
 
 
 def on_click_enter(e: tk.Event):
@@ -60,17 +61,16 @@ class EditBoxBase:
 
 class RenameFactory(EditBoxBase, TkMixin):
     __slots__ = ('img_path_list', 'next_img_flag',
-                 'dict_hotkey', 'window_size')
+                 'config',)
 
     ILLEGAL_CHARS = ('\\', '/', '?', '*', '<', '>', '|')  # These characters is not acceptable for the filename.
     FINISHED_MSG = 'FINISHED'
     IMG_WINDOW_NAME = 'demo'
 
-    def __init__(self, img_path_list: List[Path], **options):
+    def __init__(self, img_path_list: List[Path], config: types.SimpleNamespace, **options):
         self.img_path_list = img_path_list
 
-        self.dict_hotkey: Dict[str, List[str]] = options.get('dict_hotkey', dict(commit=['<Return>'], skip=[]))
-        self.window_size: Union[Tuple[int, int], None] = options.get('window_size')
+        self.config = config
         self.next_img_flag = False
         EditBoxBase.__init__(self, **options)
 
@@ -91,11 +91,15 @@ class RenameFactory(EditBoxBase, TkMixin):
         entry.config(font=(self.FONT_NAME, 18), fg='blue', width=10)
         entry.focus_set()
         self.put2canvas(entry, 200, 140)
-        for key_name in self.dict_hotkey['commit']:
-            # self.root.bind('<Return>', self.on_click_commit)
-            self.root.bind(key_name, self.on_click_commit)
-        for key_name in self.dict_hotkey['skip']:
-            self.root.bind(key_name, self.on_click_skip)
+        if hasattr(self.config, 'dict_hotkey') and isinstance(self.config.dict_hotkey, dict):
+            dict_hotkey: Dict = self.config.dict_hotkey
+            for key_name in dict_hotkey.get('commit', []):
+                # self.root.bind('<Return>', self.on_click_commit)
+                self.root.bind(key_name, self.on_click_commit)
+            for key_name in dict_hotkey.get('skip', []):
+                self.root.bind(key_name, self.on_click_skip)
+            for key_name in dict_hotkey.get('insert_file_name', []):
+                self.root.bind(key_name, self.on_hotkey_insert_file_name)
 
         self.put2canvas(tk.Button(text='Commit', command=lambda: self.on_click_commit(None),
                                   width=20,
@@ -133,6 +137,7 @@ class RenameFactory(EditBoxBase, TkMixin):
         if len(self.img_path_list) == 0:
             print('empty img_path_list')
             return
+        window_size = getattr(self.config, 'window_size', None)
         for img_path in self.img_path_list:
             img_cur = imread(img_path)
             show_flag = True
@@ -141,9 +146,11 @@ class RenameFactory(EditBoxBase, TkMixin):
                 if cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1 or show_flag:
                     # If the user closed the window, then show it again.
                     show_img(img_cur, window_name=self.IMG_WINDOW_NAME,
-                             window_size=self.window_size if self.window_size is not None else -1,
+                             window_size=window_size if window_size is not None else -1,
                              delay_time=1)
                     self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
+                    if hasattr(self.config, 'default_name_flag') and self.config.default_name_flag:
+                        self.on_hotkey_insert_file_name()
                     show_flag = False
 
                 if self.next_img_flag:
@@ -179,6 +186,11 @@ class RenameFactory(EditBoxBase, TkMixin):
     def on_click_skip(self, _: Union[tk.Event, None]):
         self.next_img_flag = True
         return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
+
+    def on_hotkey_insert_file_name(self, _: Union[tk.Event, None] = None):
+        img_path: Path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
+        self.entry.insert(0, img_path.stem)
+        self.entry.icursor(0)
 
 
 class ImageRenameApp(RenameFactory):
