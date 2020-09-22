@@ -61,7 +61,7 @@ class EditBoxBase:
 
 class RenameFactory(EditBoxBase, TkMixin):
     __slots__ = ('img_path_list', 'next_img_flag',
-                 'config',)
+                 'config', 'dict_info')
 
     ILLEGAL_CHARS = ('\\', '/', '?', '*', '<', '>', '|')  # These characters is not acceptable for the filename.
     FINISHED_MSG = 'FINISHED'
@@ -71,6 +71,7 @@ class RenameFactory(EditBoxBase, TkMixin):
         self.img_path_list = img_path_list
 
         self.config = config
+        self.dict_info = dict()
         self.next_img_flag = False
         EditBoxBase.__init__(self, **options)
 
@@ -88,7 +89,7 @@ class RenameFactory(EditBoxBase, TkMixin):
         self.put2canvas(label_input_info, 200, 100)
 
         entry = tk.Entry(self.root, name='entry_new_name')
-        entry.config(font=(self.FONT_NAME, 18), fg='blue', width=10)
+        entry.config(font=(self.FONT_NAME, 18), fg='blue', width=16)
         entry.focus_set()
         self.put2canvas(entry, 200, 140)
         if hasattr(self.config, 'dict_hotkey') and isinstance(self.config.dict_hotkey, dict):
@@ -100,6 +101,8 @@ class RenameFactory(EditBoxBase, TkMixin):
                 self.root.bind(key_name, self.on_click_skip)
             for key_name in dict_hotkey.get('insert_file_name', []):
                 self.root.bind(key_name, self.on_hotkey_insert_file_name)
+            for key_name in dict_hotkey.get('insert_previous', []):
+                self.root.bind(key_name, self.on_hotkey_insert_previous)
 
         self.put2canvas(tk.Button(text='Commit', command=lambda: self.on_click_commit(None),
                                   width=20,
@@ -148,13 +151,13 @@ class RenameFactory(EditBoxBase, TkMixin):
                     show_img(img_cur, window_name=self.IMG_WINDOW_NAME,
                              window_size=window_size if window_size is not None else -1,
                              delay_time=1)
-                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
+                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}')
+                    self.dict_info['cur_img_path'] = img_path
                     if hasattr(self.config, 'default_name_flag') and self.config.default_name_flag:
                         self.on_hotkey_insert_file_name()
                     show_flag = False
 
                 if self.next_img_flag:
-                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
                     break
         print('all done!')
         cv2.destroyAllWindows()
@@ -168,19 +171,20 @@ class RenameFactory(EditBoxBase, TkMixin):
         if [_ for _ in filter(lambda char: char in new_file_name, self.ILLEGAL_CHARS)]:
             self.update_ui('label_error_msg', text=f'ILLEGAL_CHARS: {" ".join(self.ILLEGAL_CHARS)}')
             return
-        org_img_path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
-        new_file = org_img_path.parent / Path(new_file_name + org_img_path.suffix)
+        org_img_path = self.dict_info['cur_img_path']
+        new_file: Path = org_img_path.parent / Path(new_file_name + org_img_path.suffix)
         # if new_file.exists():  # case insensitive
         if new_file.name in os.listdir(new_file.parent):
             self.update_ui('label_error_msg', text=f'FileExistsError: {org_img_path.name} -> {new_file.name}')
             return
         self.update_ui('label_error_msg', text=f'')
+        self.dict_info['previous_img_path'] = new_file
         org_img_path.rename(new_file)
         self.entry.delete(0, len(new_file_name))
         self.next_img_flag = True
 
     def on_click_open_source_dir(self, _: Union[tk.Event, None]):
-        img_path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
+        img_path = self.dict_info['cur_img_path']
         os.startfile(img_path.parent)
 
     def on_click_skip(self, _: Union[tk.Event, None]):
@@ -188,8 +192,15 @@ class RenameFactory(EditBoxBase, TkMixin):
         return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
 
     def on_hotkey_insert_file_name(self, _: Union[tk.Event, None] = None):
-        img_path: Path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
+        img_path: Path = self.dict_info['cur_img_path']
         self.entry.insert(0, img_path.stem)
+        self.entry.icursor(0)
+
+    def on_hotkey_insert_previous(self, _: Union[tk.Event, None] = None):
+        if not self.dict_info.get('previous_img_path'):
+            return
+        previous_img_path: Path = self.dict_info['previous_img_path']
+        self.entry.insert(0, previous_img_path.stem)
         self.entry.icursor(0)
 
 

@@ -25,6 +25,9 @@ def after_end(cb_fun: Callable):
 
     with after_end(cb_fun=lambda: shutil.rmtree(temp_dir)) as _:  # make sure the temp_dir will remove after finished.
         ...
+
+    with after_end(cb_fun=lambda: [os.remove(file) for file in [_ for _ in work_dir.glob('*.*') if _.suffix[1:] in ('html',)]]) as _
+        ...
     """
     try:
         yield cb_fun
