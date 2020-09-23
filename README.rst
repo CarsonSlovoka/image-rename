@@ -83,5 +83,10 @@ get help:
 ``img_rename -h``
 
 
+DEMO
+=============
+
+.. image:: https://raw.githubusercontent.com/CarsonSlovoka/image-rename/release/demo/demo.png
+
 REFERENCE
 =============

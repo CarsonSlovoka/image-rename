@@ -2,14 +2,12 @@ import tkinter as tk
 from typing import Union, List, Dict, Tuple
 from pathlib import Path
 from grid_extractor import show_img
+from .api.imagehelper import append_image_to_news
 import cv2
 import numpy as np
 import asyncio
 import os
-
-
-def on_click_enter(e: tk.Event):
-    print(e)
+import types
 
 
 def imread(file, flag=cv2.IMREAD_UNCHANGED):
@@ -60,17 +58,17 @@ class EditBoxBase:
 
 class RenameFactory(EditBoxBase, TkMixin):
     __slots__ = ('img_path_list', 'next_img_flag',
-                 'dict_hotkey', 'window_size')
+                 'config', 'dict_info')
 
     ILLEGAL_CHARS = ('\\', '/', '?', '*', '<', '>', '|')  # These characters is not acceptable for the filename.
     FINISHED_MSG = 'FINISHED'
     IMG_WINDOW_NAME = 'demo'
 
-    def __init__(self, img_path_list: List[Path], **options):
+    def __init__(self, img_path_list: List[Path], config: types.SimpleNamespace, **options):
         self.img_path_list = img_path_list
 
-        self.dict_hotkey: Dict[str, List[str]] = options.get('dict_hotkey', dict(commit=['<Return>'], skip=[]))
-        self.window_size: Union[Tuple[int, int], None] = options.get('window_size')
+        self.config = config
+        self.dict_info = dict()
         self.next_img_flag = False
         EditBoxBase.__init__(self, **options)
 
@@ -88,14 +86,20 @@ class RenameFactory(EditBoxBase, TkMixin):
         self.put2canvas(label_input_info, 200, 100)
 
         entry = tk.Entry(self.root, name='entry_new_name')
-        entry.config(font=(self.FONT_NAME, 18), fg='blue', width=10)
+        entry.config(font=(self.FONT_NAME, 18), fg='blue', width=16)
         entry.focus_set()
         self.put2canvas(entry, 200, 140)
-        for key_name in self.dict_hotkey['commit']:
-            # self.root.bind('<Return>', self.on_click_commit)
-            self.root.bind(key_name, self.on_click_commit)
-        for key_name in self.dict_hotkey['skip']:
-            self.root.bind(key_name, self.on_click_skip)
+        if hasattr(self.config, 'dict_hotkey') and isinstance(self.config.dict_hotkey, dict):
+            dict_hotkey: Dict = self.config.dict_hotkey
+            for key_name in dict_hotkey.get('commit', []):
+                # self.root.bind('<Return>', self.on_click_commit)
+                self.root.bind(key_name, self.on_click_commit)
+            for key_name in dict_hotkey.get('skip', []):
+                self.root.bind(key_name, self.on_click_skip)
+            for key_name in dict_hotkey.get('insert_file_name', []):
+                self.root.bind(key_name, self.on_hotkey_insert_file_name)
+            for key_name in dict_hotkey.get('insert_previous', []):
+                self.root.bind(key_name, self.on_hotkey_insert_previous)
 
         self.put2canvas(tk.Button(text='Commit', command=lambda: self.on_click_commit(None),
                                   width=20,
@@ -133,21 +137,45 @@ class RenameFactory(EditBoxBase, TkMixin):
         if len(self.img_path_list) == 0:
             print('empty img_path_list')
             return
-        for img_path in self.img_path_list:
-            img_cur = imread(img_path)
+        window_size: Tuple[int, int] = getattr(self.config, 'window_size', None)
+        display_n_img = getattr(self.config, 'display_n_img', 1)
+        highlight_color: Tuple[int, int, int] = getattr(self.config, 'highlight_color', None)
+        border_thickness: int = getattr(self.config, 'border_thickness', 1)
+        n_total_img = len(self.img_path_list)
+        for idx, img_path in enumerate(self.img_path_list):
+            img_cur = img_display = imread(img_path)
             show_flag = True
             self.next_img_flag = False
             while await asyncio.sleep(interval, True):
-                if cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1 or show_flag:
-                    # If the user closed the window, then show it again.
-                    show_img(img_cur, window_name=self.IMG_WINDOW_NAME,
-                             window_size=self.window_size if self.window_size is not None else -1,
+                if (cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1  # If the user closed the window, then show it again.
+                        or show_flag):
+
+                    if display_n_img > 1:
+                        if img_cur.ndim == 2 or img_cur.shape[-1] == 1:
+                            img_cur = cv2.cvtColor(img_cur, cv2.COLOR_GRAY2RGBA)
+                        if highlight_color is not None:
+                            img_cur = cv2.copyMakeBorder(img_cur,
+                                                         border_thickness, border_thickness, border_thickness, border_thickness,
+                                                         cv2.BORDER_CONSTANT, value=highlight_color)
+                    img_display: np.ndarray = img_cur if display_n_img == 1 else \
+                        append_image_to_news(img_cur,
+                                             [imread(_) for _ in
+                                              self.img_path_list[idx + 1:min(idx + display_n_img, n_total_img)] if idx + 1 < n_total_img],
+                                             direction='r')
+                    show_img(img_display, window_name=self.IMG_WINDOW_NAME,
+                             window_size=window_size if window_size is not None else -1,
                              delay_time=1)
-                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
+                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}')
+                    self.dict_info['cur_img_path'] = img_path
+                    if hasattr(self.config, 'default_name_flag') and self.config.default_name_flag:
+                        self.on_hotkey_insert_file_name()
                     show_flag = False
 
                 if self.next_img_flag:
-                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}').hide_msg = img_path
+                    if self.config.clear_window:
+                        show_img((np.ones(img_display.shape) * 255).astype(np.uint8), window_name=self.IMG_WINDOW_NAME,
+                                 window_size=window_size if window_size is not None else -1,
+                                 delay_time=1)  # Avoid previous images remaining. use destroyWindow is not a good idea, it's too slow.
                     break
         print('all done!')
         cv2.destroyAllWindows()
@@ -161,24 +189,37 @@ class RenameFactory(EditBoxBase, TkMixin):
         if [_ for _ in filter(lambda char: char in new_file_name, self.ILLEGAL_CHARS)]:
             self.update_ui('label_error_msg', text=f'ILLEGAL_CHARS: {" ".join(self.ILLEGAL_CHARS)}')
             return
-        org_img_path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
-        new_file = org_img_path.parent / Path(new_file_name + org_img_path.suffix)
+        org_img_path = self.dict_info['cur_img_path']
+        new_file: Path = org_img_path.parent / Path(new_file_name + org_img_path.suffix)
         # if new_file.exists():  # case insensitive
         if new_file.name in os.listdir(new_file.parent):
             self.update_ui('label_error_msg', text=f'FileExistsError: {org_img_path.name} -> {new_file.name}')
             return
         self.update_ui('label_error_msg', text=f'')
+        self.dict_info['previous_img_path'] = new_file
         org_img_path.rename(new_file)
         self.entry.delete(0, len(new_file_name))
         self.next_img_flag = True
 
     def on_click_open_source_dir(self, _: Union[tk.Event, None]):
-        img_path = getattr(self.get_widget('label_abs_img_path'), 'hide_msg')
+        img_path = self.dict_info['cur_img_path']
         os.startfile(img_path.parent)
 
     def on_click_skip(self, _: Union[tk.Event, None]):
         self.next_img_flag = True
         return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
+
+    def on_hotkey_insert_file_name(self, _: Union[tk.Event, None] = None):
+        img_path: Path = self.dict_info['cur_img_path']
+        self.entry.insert(0, img_path.stem)
+        self.entry.icursor(0)
+
+    def on_hotkey_insert_previous(self, _: Union[tk.Event, None] = None):
+        if not self.dict_info.get('previous_img_path'):
+            return
+        previous_img_path: Path = self.dict_info['previous_img_path']
+        self.entry.insert(0, previous_img_path.stem)
+        self.entry.icursor(0)
 
 
 class ImageRenameApp(RenameFactory):

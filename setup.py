@@ -57,7 +57,7 @@ setup(
     version=VERSION_NUMBER,  # x.x.x.{dev, a, b, rc}
 
     packages=find_packages(exclude=['*.test_cases']),
-    package_data={f'{PACKAGES_DIR}.test': ['image/*.*', ],
+    package_data={f'{PACKAGES_DIR}.test': ['image/1.png', 'image/2.png'],
                   f'{PACKAGES_DIR}': ['asset/icon/*.*', ]},
     include_package_data=True,
     license="BSD 3-Clause",
