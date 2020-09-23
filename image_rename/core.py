@@ -2,15 +2,12 @@ import tkinter as tk
 from typing import Union, List, Dict, Tuple
 from pathlib import Path
 from grid_extractor import show_img
+from .api.imagehelper import append_image_to_news
 import cv2
 import numpy as np
 import asyncio
 import os
 import types
-
-
-def on_click_enter(e: tk.Event):
-    print(e)
 
 
 def imread(file, flag=cv2.IMREAD_UNCHANGED):
@@ -141,14 +138,26 @@ class RenameFactory(EditBoxBase, TkMixin):
             print('empty img_path_list')
             return
         window_size = getattr(self.config, 'window_size', None)
-        for img_path in self.img_path_list:
-            img_cur = imread(img_path)
+        display_n_img = getattr(self.config, 'display_n_img', 1)
+        n_total_img = len(self.img_path_list)
+        for idx, img_path in enumerate(self.img_path_list):
+            img_cur = img_display = imread(img_path)
             show_flag = True
             self.next_img_flag = False
             while await asyncio.sleep(interval, True):
-                if cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1 or show_flag:
-                    # If the user closed the window, then show it again.
-                    show_img(img_cur, window_name=self.IMG_WINDOW_NAME,
+                if (cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1  # If the user closed the window, then show it again.
+                        or show_flag):
+
+                    if display_n_img > 1:
+                        if img_cur.ndim == 2 or img_cur.shape[-1] == 1:
+                            img_cur = cv2.cvtColor(img_cur, cv2.COLOR_GRAY2RGBA)
+                        img_cur = cv2.copyMakeBorder(img_cur,  10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(0, 0, 255))
+                    img_display: np.ndarray = img_cur if display_n_img == 1 else \
+                        append_image_to_news(img_cur,
+                                             [imread(_) for _ in
+                                              self.img_path_list[idx + 1:min(idx + display_n_img, n_total_img)] if idx + 1 < n_total_img],
+                                             direction='r')
+                    show_img(img_display, window_name=self.IMG_WINDOW_NAME,
                              window_size=window_size if window_size is not None else -1,
                              delay_time=1)
                     self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}')
@@ -158,6 +167,10 @@ class RenameFactory(EditBoxBase, TkMixin):
                     show_flag = False
 
                 if self.next_img_flag:
+                    if self.config.clear_window:
+                        show_img(np.ones(img_display.shape) * 255, window_name=self.IMG_WINDOW_NAME,
+                                 window_size=window_size if window_size is not None else -1,
+                                 delay_time=1)  # Avoid previous images remaining. use destroyWindow is not a good idea, it's too slow.
                     break
         print('all done!')
         cv2.destroyAllWindows()
