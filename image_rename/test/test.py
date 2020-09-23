@@ -1,5 +1,6 @@
 from unittest import TestCase
 import unittest
+import os
 
 if 'env path':
     from pathlib import Path
@@ -10,6 +11,7 @@ if 'env path':
         __version__,
     )
     from image_rename.cli import main as cli_main
+    from image_rename.api.utils import after_end
 
     sys.path.remove(sys.path[0])
 
@@ -21,7 +23,11 @@ class ImageRenameAppTests(TestCase):
 
     def test_feed_setting_file(self):
         setting_file_path = Path(__file__).parent / Path('setting.py')
-        cli_main(setting_file_path)
+        with after_end(cb_fun=lambda: os.remove(setting_file_path)) as _:
+            with open(Path(__file__).parent.parent / Path('config.py'), 'r', encoding='utf-8') as config, \
+                 open(setting_file_path, 'w', encoding='utf-8') as setting:
+                setting.write(config.read().replace('use default config', 'use test setting.py'))
+            cli_main(setting_file_path)
 
     def test_default(self):
         cli_main(Path(__file__).parent.parent / Path('config.py'))
