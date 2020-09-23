@@ -137,8 +137,10 @@ class RenameFactory(EditBoxBase, TkMixin):
         if len(self.img_path_list) == 0:
             print('empty img_path_list')
             return
-        window_size = getattr(self.config, 'window_size', None)
+        window_size: Tuple[int, int] = getattr(self.config, 'window_size', None)
         display_n_img = getattr(self.config, 'display_n_img', 1)
+        highlight_color: Tuple[int, int, int] = getattr(self.config, 'highlight_color', None)
+        border_thickness: int = getattr(self.config, 'border_thickness', 1)
         n_total_img = len(self.img_path_list)
         for idx, img_path in enumerate(self.img_path_list):
             img_cur = img_display = imread(img_path)
@@ -151,7 +153,10 @@ class RenameFactory(EditBoxBase, TkMixin):
                     if display_n_img > 1:
                         if img_cur.ndim == 2 or img_cur.shape[-1] == 1:
                             img_cur = cv2.cvtColor(img_cur, cv2.COLOR_GRAY2RGBA)
-                        img_cur = cv2.copyMakeBorder(img_cur,  10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(0, 0, 255))
+                        if highlight_color is not None:
+                            img_cur = cv2.copyMakeBorder(img_cur,
+                                                         border_thickness, border_thickness, border_thickness, border_thickness,
+                                                         cv2.BORDER_CONSTANT, value=highlight_color)
                     img_display: np.ndarray = img_cur if display_n_img == 1 else \
                         append_image_to_news(img_cur,
                                              [imread(_) for _ in
@@ -168,7 +173,7 @@ class RenameFactory(EditBoxBase, TkMixin):
 
                 if self.next_img_flag:
                     if self.config.clear_window:
-                        show_img(np.ones(img_display.shape) * 255, window_name=self.IMG_WINDOW_NAME,
+                        show_img((np.ones(img_display.shape) * 255).astype(np.uint8), window_name=self.IMG_WINDOW_NAME,
                                  window_size=window_size if window_size is not None else -1,
                                  delay_time=1)  # Avoid previous images remaining. use destroyWindow is not a good idea, it's too slow.
                     break
