@@ -207,6 +207,7 @@ class RenameFactory(EditBoxBase, TkMixin):
 
     def on_click_skip(self, _: Union[tk.Event, None]):
         self.next_img_flag = True
+        self.entry.delete(0, len(self.dict_info['cur_img_path'].name))
         return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
 
     def on_hotkey_insert_file_name(self, _: Union[tk.Event, None] = None):

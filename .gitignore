@@ -7,3 +7,7 @@ docs/en/*
 *.buildinfo
 *ipynb_checkpoints/
 jupyter
+
+# docs
+*.pickle
+*.doctree
