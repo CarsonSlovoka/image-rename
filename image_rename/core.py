@@ -1,5 +1,5 @@
 import tkinter as tk
-from typing import Union, List, Dict, Tuple
+from typing import Union, List, Dict, Tuple, Callable, Any
 from pathlib import Path
 from grid_extractor import show_img
 from .api.imagehelper import append_image_to_news
@@ -8,6 +8,7 @@ import numpy as np
 import asyncio
 import os
 import types
+import functools
 
 
 def imread(file, flag=cv2.IMREAD_UNCHANGED):
@@ -96,10 +97,12 @@ class RenameFactory(EditBoxBase, TkMixin):
                 self.root.bind(key_name, self.on_click_commit)
             for key_name in dict_hotkey.get('skip', []):
                 self.root.bind(key_name, self.on_click_skip)
-            for key_name in dict_hotkey.get('insert_file_name', []):
-                self.root.bind(key_name, self.on_hotkey_insert_file_name)
-            for key_name in dict_hotkey.get('insert_previous', []):
-                self.root.bind(key_name, self.on_hotkey_insert_previous)
+
+            for hotkey_name in ('insert_file_name', 'insert_previous'):
+                for key_name in dict_hotkey.get(hotkey_name):
+                    event_func: Callable[[RenameFactory], Tuple] = getattr(self, f'on_hotkey_{hotkey_name}', None)
+                    if event_func:
+                        self.root.bind(key_name, event_func)
 
         self.put2canvas(tk.Button(text='Commit', command=lambda: self.on_click_commit(None),
                                   width=20,
@@ -210,12 +213,12 @@ class RenameFactory(EditBoxBase, TkMixin):
         self.entry.delete(0, len(self.dict_info['cur_img_path'].name))
         return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
 
-    def on_hotkey_insert_file_name(self, _: Union[tk.Event, None] = None):
+    def on_hotkey_insert_file_name(self):
         img_path: Path = self.dict_info['cur_img_path']
         self.entry.insert(0, img_path.stem)
         self.entry.icursor(0)
 
-    def on_hotkey_insert_previous(self, _: Union[tk.Event, None] = None):
+    def on_hotkey_insert_previous(self):
         if not self.dict_info.get('previous_img_path'):
             return
         previous_img_path: Path = self.dict_info['previous_img_path']
@@ -230,7 +233,9 @@ class ImageRenameApp(RenameFactory):
     def __init__(self, loop, img_path_list, **options):
         self.is_dead = False  # The app finished or not.
         self.loop = loop
+        from .template.base import Template
         RenameFactory.__init__(self, img_path_list, **options)
+        Template(self).render()  # load Template
         self.root.protocol("WM_DELETE_WINDOW", self.close)  # override original function
         interval = options.get('interval', 1 / 120)
         self.dict_task: Dict[str, asyncio.Task] = dict(
