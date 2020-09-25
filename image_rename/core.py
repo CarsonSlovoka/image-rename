@@ -8,7 +8,7 @@ import numpy as np
 import asyncio
 import os
 import types
-import functools
+from dataclasses import dataclass, field
 
 
 def imread(file, flag=cv2.IMREAD_UNCHANGED):
@@ -59,17 +59,23 @@ class EditBoxBase:
 
 class RenameFactory(EditBoxBase, TkMixin):
     __slots__ = ('img_path_list', 'next_img_flag',
-                 'config', 'dict_info')
+                 'config', 'widget_info')
 
     ILLEGAL_CHARS = ('\\', '/', '?', '*', '<', '>', '|')  # These characters is not acceptable for the filename.
     FINISHED_MSG = 'FINISHED'
     IMG_WINDOW_NAME = 'demo'
 
+    @dataclass(repr=False, eq=False)
+    class WidgetInfo:
+        cur_img_path: Path = field(init=False, default=None)
+        previous_img_path: Path = field(init=False, default=None)
+        entry: tk.Entry = field(init=False, default=None)
+
     def __init__(self, img_path_list: List[Path], config: types.SimpleNamespace, **options):
         self.img_path_list = img_path_list
 
         self.config = config
-        self.dict_info = dict()
+        self.widget_info = self.WidgetInfo()
         self.next_img_flag = False
         EditBoxBase.__init__(self, **options)
 
@@ -89,6 +95,7 @@ class RenameFactory(EditBoxBase, TkMixin):
         entry = tk.Entry(self.root, name='entry_new_name')
         entry.config(font=(self.FONT_NAME, 18), fg='blue', width=16)
         entry.focus_set()
+        self.widget_info.entry = entry
         self.put2canvas(entry, 200, 140)
         if hasattr(self.config, 'dict_hotkey') and isinstance(self.config.dict_hotkey, dict):
             dict_hotkey: Dict = self.config.dict_hotkey
@@ -169,9 +176,9 @@ class RenameFactory(EditBoxBase, TkMixin):
                              window_size=window_size if window_size is not None else -1,
                              delay_time=1)
                     self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}')
-                    self.dict_info['cur_img_path'] = img_path
+                    self.widget_info.cur_img_path = img_path
                     if hasattr(self.config, 'default_name_flag') and self.config.default_name_flag:
-                        self.on_hotkey_insert_file_name()
+                        self.on_hotkey_insert_file_name(None)
                     show_flag = False
 
                 if self.next_img_flag:
@@ -192,42 +199,43 @@ class RenameFactory(EditBoxBase, TkMixin):
         if [_ for _ in filter(lambda char: char in new_file_name, self.ILLEGAL_CHARS)]:
             self.update_ui('label_error_msg', text=f'ILLEGAL_CHARS: {" ".join(self.ILLEGAL_CHARS)}')
             return
-        org_img_path = self.dict_info['cur_img_path']
+        org_img_path = self.widget_info.cur_img_path
         new_file: Path = org_img_path.parent / Path(new_file_name + org_img_path.suffix)
         # if new_file.exists():  # case insensitive
         if new_file.name in os.listdir(new_file.parent):
             self.update_ui('label_error_msg', text=f'FileExistsError: {org_img_path.name} -> {new_file.name}')
             return
         self.update_ui('label_error_msg', text=f'')
-        self.dict_info['previous_img_path'] = new_file
+        self.widget_info.previous_img_path = new_file
         org_img_path.rename(new_file)
         self.entry.delete(0, len(new_file_name))
         self.next_img_flag = True
 
     def on_click_open_source_dir(self, _: Union[tk.Event, None]):
-        img_path = self.dict_info['cur_img_path']
+        img_path = self.widget_info.cur_img_path
         os.startfile(img_path.parent)
 
     def on_click_skip(self, _: Union[tk.Event, None]):
         self.next_img_flag = True
-        self.entry.delete(0, len(self.dict_info['cur_img_path'].name))
+        self.entry.delete(0, len(self.widget_info.cur_img_path.name))
         return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
 
-    def on_hotkey_insert_file_name(self):
-        img_path: Path = self.dict_info['cur_img_path']
+    def on_hotkey_insert_file_name(self, _: Union[tk.Event, None]):
+        img_path: Path = self.widget_info.cur_img_path
         self.entry.insert(0, img_path.stem)
         self.entry.icursor(0)
 
-    def on_hotkey_insert_previous(self):
-        if not self.dict_info.get('previous_img_path'):
+    def on_hotkey_insert_previous(self, _: Union[tk.Event, None]):
+        if not self.widget_info.previous_img_path:
             return
-        previous_img_path: Path = self.dict_info['previous_img_path']
+        previous_img_path: Path = self.widget_info.previous_img_path
         self.entry.insert(0, previous_img_path.stem)
         self.entry.icursor(0)
 
 
 class ImageRenameApp(RenameFactory):
     __slots__ = ('loop', 'dict_task',
+                 'interval',
                  'is_dead',)
 
     def __init__(self, loop, img_path_list, **options):
@@ -237,7 +245,7 @@ class ImageRenameApp(RenameFactory):
         RenameFactory.__init__(self, img_path_list, **options)
         Template(self).render()  # load Template
         self.root.protocol("WM_DELETE_WINDOW", self.close)  # override original function
-        interval = options.get('interval', 1 / 120)
+        self.interval = interval = options.get('interval', 1 / 40)
         self.dict_task: Dict[str, asyncio.Task] = dict(
             main=loop.create_task(self.main(interval)),
             updater=loop.create_task(self.updater(interval)),

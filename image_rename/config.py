@@ -1,10 +1,6 @@
 from typing import Tuple
 from pathlib import Path
-from image_rename.template.engine import Engine
-
-Engine.default_builtins += [
-    # Path(r"X:\...\customize_hotkey.py")
-]
+from image_rename import Engine, PLUGIN_MS_PAINT
 
 dict_hotkey = dict(
     commit=['<Return>',  # Enter
@@ -13,6 +9,12 @@ dict_hotkey = dict(
     insert_file_name=['<F7>'],
     insert_previous=['<F4>'],
 )
+
+Engine.default_builtins += [
+    # Path(r"X:\...\customize_hotkey.py")
+    PLUGIN_MS_PAINT,
+]
+
 window_size = None  # (300, 400)
 clear_window = True if window_size is None else False  # If True, it will fill the canvas with the white color every time, avoid the last remaining.
 display_n_img = 3  # Display how many images in once.

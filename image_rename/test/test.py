@@ -26,7 +26,10 @@ class ImageRenameAppTests(TestCase):
         with after_end(cb_fun=lambda: os.remove(setting_file_path)) as _:
             with open(Path(__file__).parent.parent / Path('config.py'), 'r', encoding='utf-8') as config, \
                  open(setting_file_path, 'w', encoding='utf-8') as setting:
-                setting.write(config.read().replace('use default config', 'use test setting.py'))
+                data = config.read().replace('use default config', 'use test setting.py')
+                data = data.replace("'./test/image'", "'image'")
+                setting.write(data)
+                setting.write(f"Engine.default_builtins += [Path(r'{(Path(__file__).parent/Path('plugins/demo_customize_hotkey.py')).absolute()}')]")
             cli_main(setting_file_path)
 
     def test_default(self):

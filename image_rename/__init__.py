@@ -8,3 +8,5 @@ from .core import (
 )
 
 from .api.utils import work_dir
+from .template.plugins.mspaint import PLUGIN_MS_PAINT
+from .template.engine import Engine

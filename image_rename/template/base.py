@@ -91,7 +91,7 @@ class HotkeyNode(Node):
 
     def render(self, target: RenameFactory):
         for key_name in self.key_list:
-            new_func = functools.wraps(self.func)(lambda tk_event: self.func(target.dict_info))
+            new_func = functools.wraps(self.func)(lambda tk_event: self.func(target))
             target.root.bind(key_name, new_func)
 
 

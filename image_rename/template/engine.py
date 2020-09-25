@@ -13,7 +13,7 @@ class Engine:
     __slots__ = ('dirs', 'template_builtins', 'file_charset')
 
     default_builtins = [
-        Path('__file__').parent.parent / Path('template/plugins/default_hotkeys.py'),
+        Path(__file__).parent.parent / Path('template/plugins/default_hotkeys.py'),
     ]
 
     def __init__(self, builtins: List = None,):
