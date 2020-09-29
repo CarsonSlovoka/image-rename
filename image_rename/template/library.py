@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List, Union
 
 
 class Library:
@@ -14,7 +14,7 @@ class Library:
     def __repr__(self):
         return self.lib_name
 
-    def hotkey(self, key_list: List[str], name=None):
+    def hotkey(self, key_list: Union[str, List[str]], name=None, callback: bool = False):
         return lambda func: self.hotkey_function(func, key_list, name)
 
     def hotkey_function(self, func: Callable, key_list, name):

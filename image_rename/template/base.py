@@ -5,6 +5,7 @@ import abc
 from enum import Enum
 from image_rename.core import RenameFactory
 import functools
+import inspect
 
 
 class TokenType(Enum):
@@ -58,7 +59,9 @@ class Parser:
     def parse(self) -> "NodeList":
         nodelist = NodeList()
         for name, (func, key_list) in self.hotkeys.items():
-            self.extend_nodelist(nodelist, HotkeyNode(name, func, key_list), Token(TokenType.HotKey))
+            args_list, *_others = inspect.getfullargspec(func)
+            need_job_list = True if 'dict_job' in args_list else False
+            self.extend_nodelist(nodelist, HotkeyNode(name, func, key_list, need_job_list), Token(TokenType.HotKey))
         return nodelist
 
     @staticmethod
@@ -82,16 +85,25 @@ class Node(abc.ABC):
 
 class HotkeyNode(Node):
     __slots__ = ('token',
-                 'name', 'func', 'key_list')
+                 'name', 'func', 'key_list',
+                 'need_job_list')
 
-    def __init__(self, name: str, func: Callable, key_list: List[str]):
+    def __init__(self, name: str, func: Callable, key_list: List[str], need_job_list: bool):
         self.name = name
         self.func = func
         self.key_list = key_list
+        self.need_job_list = need_job_list
 
     def render(self, target: RenameFactory):
+        if not isinstance(self.key_list, list):
+            self.key_list = [self.key_list]
         for key_name in self.key_list:
-            new_func = functools.wraps(self.func)(lambda tk_event: self.func(target))
+            if self.need_job_list:
+                new_func = functools.wraps(self.func)(lambda tk_event:
+                                                      self.func(target, getattr(RenameFactory.on_hotkey_event, 'dict_job', lambda: None)),
+                                                      )
+            else:
+                new_func = functools.wraps(self.func)(lambda tk_event: self.func(target))
             target.root.bind(key_name, new_func)
 
 

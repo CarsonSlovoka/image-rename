@@ -30,7 +30,7 @@ def main(input_setting_path=None):
         loader.exec_module(setting_module)
 
         # Solve the problem of the relative path.
-        [setattr(setting_module, member_name, str(member.resolve())) for member_name, member in inspect.getmembers(setting_module) if not member_name.startswith('_') and isinstance(member, Path)]
+        [setattr(setting_module, member_name, str(member.absolute())) for member_name, member in inspect.getmembers(setting_module) if not member_name.startswith('_') and isinstance(member, Path)]
 
         loop = asyncio.get_event_loop()
         app = ImageRenameApp(loop, config.img_path_list, **dict(config=config))

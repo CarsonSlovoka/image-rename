@@ -10,10 +10,15 @@ dict_hotkey = dict(
     insert_previous=['<F4>'],
 )
 
-Engine.default_builtins += [
-    # Path(r"X:\...\customize_hotkey.py")
-    PLUGIN_MS_PAINT,
-]
+if not 'ignore default_builtins':
+    Engine.default_builtins += [
+        # Path(r"X:\...\customize_hotkey.py")
+    ]
+else:
+    engine = Engine([
+        # Path(r"X:\...\customize_hotkey.py")
+        PLUGIN_MS_PAINT,
+        ])
 
 window_size = None  # (300, 400)
 clear_window = True if window_size is None else False  # If True, it will fill the canvas with the white color every time, avoid the last remaining.
@@ -24,6 +29,10 @@ if display_n_img > 1:
 default_name_flag = True  # If the flag is True, then it will show the name in the widget of entry in each image.
 img_path_list = [f for f in Path('./test/image').glob('*') if f.suffix[1:].lower() in ('png', 'bmp', 'jpg')]
 # img_path_list = [f for f in Path('./test').glob('**/*') if f.suffix[1:].lower() in ('png', 'bmp', 'jpg')]  # It's able to look the nest directory.
+
+if 'The area record the variable used for the plugin':
+    output_history_log_path = Path('./my_history_log.txt')
+    output_change_log_path = Path('./my_change_log.txt')
 
 DEBUG = True
 if DEBUG:

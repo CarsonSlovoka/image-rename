@@ -13,4 +13,7 @@ register = template.Library(__name__)
 
 @register.hotkey(key_list=['<Alt-P>', '<Alt-p>'])
 def start_ms_paint(app: ImageRenameApp):
-    Popen(['mspaint', str(app.widget_info.cur_img_path)], stdout=PIPE, stderr=PIPE, stdin=DEVNULL)
+    job = Popen(['mspaint', str(app.widget_info.cur_img_path)], stdout=PIPE, stderr=PIPE, stdin=DEVNULL)
+    job.communicate()  # waiting for the job done.
+    app.refresh_window()
+    # app.next_img_flag = True

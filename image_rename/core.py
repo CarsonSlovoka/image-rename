@@ -9,6 +9,7 @@ import asyncio
 import os
 import types
 from dataclasses import dataclass, field
+from enum import Enum
 
 
 def imread(file, flag=cv2.IMREAD_UNCHANGED):
@@ -57,8 +58,18 @@ class EditBoxBase:
         raise NotImplementedError('on_click_commit')
 
 
+class Event(Enum):
+    NONE = -1
+    IMG_CHANGE = 0
+
+
+class JobState(Enum):
+    ONCE = 0
+    FOREVER = 1
+
+
 class RenameFactory(EditBoxBase, TkMixin):
-    __slots__ = ('img_path_list', 'next_img_flag',
+    __slots__ = ('img_path_list', '_next_img_flag',
                  'config', 'widget_info')
 
     ILLEGAL_CHARS = ('\\', '/', '?', '*', '<', '>', '|')  # These characters is not acceptable for the filename.
@@ -69,6 +80,7 @@ class RenameFactory(EditBoxBase, TkMixin):
     class WidgetInfo:
         cur_img_path: Path = field(init=False, default=None)
         previous_img_path: Path = field(init=False, default=None)
+        previous_info: Path = field(init=False, default=None)
         entry: tk.Entry = field(init=False, default=None)
 
     def __init__(self, img_path_list: List[Path], config: types.SimpleNamespace, **options):
@@ -76,8 +88,9 @@ class RenameFactory(EditBoxBase, TkMixin):
 
         self.config = config
         self.widget_info = self.WidgetInfo()
-        self.next_img_flag = False
+        self._next_img_flag = False
         EditBoxBase.__init__(self, **options)
+        self.__class__.on_hotkey_event.dict_job = dict()
 
     def init_ui(self):
         self.root.iconbitmap(Path(__file__).parent / Path('asset/icon/main.ico'))
@@ -153,13 +166,14 @@ class RenameFactory(EditBoxBase, TkMixin):
         border_thickness: int = getattr(self.config, 'border_thickness', 1)
         n_total_img = len(self.img_path_list)
         for idx, img_path in enumerate(self.img_path_list):
-            img_cur = img_display = imread(img_path)
+            img_display = imread(img_path)
             show_flag = True
-            self.next_img_flag = False
+            self._next_img_flag = False
+            is_first_show = True
             while await asyncio.sleep(interval, True):
-                if (cv2.getWindowProperty('demo', cv2.WND_PROP_FULLSCREEN) == -1  # If the user closed the window, then show it again.
+                if (cv2.getWindowProperty(self.IMG_WINDOW_NAME, cv2.WND_PROP_FULLSCREEN) == -1  # If the user closed the window, then show it again.
                         or show_flag):
-
+                    img_cur = imread(img_path)
                     if display_n_img > 1:
                         if img_cur.ndim == 2 or img_cur.shape[-1] == 1:
                             img_cur = cv2.cvtColor(img_cur, cv2.COLOR_GRAY2RGBA)
@@ -175,13 +189,19 @@ class RenameFactory(EditBoxBase, TkMixin):
                     show_img(img_display, window_name=self.IMG_WINDOW_NAME,
                              window_size=window_size if window_size is not None else -1,
                              delay_time=1)
-                    self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}')
-                    self.widget_info.cur_img_path = img_path
-                    if hasattr(self.config, 'default_name_flag') and self.config.default_name_flag:
-                        self.on_hotkey_insert_file_name(None)
+
+                    if is_first_show:
+                        self.update_ui('label_abs_img_path', text=f'{str(img_path.resolve())[-50:]}')
+                        self.widget_info.cur_img_path = img_path
+                        if hasattr(self.config, 'default_name_flag') and self.config.default_name_flag:
+                            self.on_hotkey_insert_file_name(None)
+                        self.on_hotkey_event(Event.IMG_CHANGE)
+                        is_first_show = False
                     show_flag = False
 
-                if self.next_img_flag:
+                self.on_hotkey_event(Event.NONE)
+
+                if self._next_img_flag:
                     if self.config.clear_window:
                         show_img((np.ones(img_display.shape) * 255).astype(np.uint8), window_name=self.IMG_WINDOW_NAME,
                                  window_size=window_size if window_size is not None else -1,
@@ -190,6 +210,26 @@ class RenameFactory(EditBoxBase, TkMixin):
         print('all done!')
         cv2.destroyAllWindows()
         return self.FINISHED_MSG
+
+    def refresh_window(self):
+        cv2.destroyWindow(self.IMG_WINDOW_NAME)
+
+    def on_hotkey_event(self, cur_event: Event):
+        dict_job = getattr(self.on_hotkey_event, 'dict_job', dict)
+        if not dict_job:
+            return
+
+        dict_job = {k: v for k, v in [(k, v) for k, v in
+                                      sorted(dict_job.items(), key=lambda item: item[1][0])][::-1]  # sorted by priority: ascending
+                    }
+        self.__class__.on_hotkey_event.dict_job = dict_job
+
+        for name, (n_priority, job, event, state) in dict_job.items():
+            job: Callable
+            if event == cur_event:
+                job()
+                if state == JobState.ONCE:
+                    del dict_job[name]
 
     def on_click_commit(self, _: Union[tk.Event, None]):
         new_file_name = self.entry.get()
@@ -207,17 +247,19 @@ class RenameFactory(EditBoxBase, TkMixin):
             return
         self.update_ui('label_error_msg', text=f'')
         self.widget_info.previous_img_path = new_file
+        self.widget_info.previous_info = org_img_path, new_file
         org_img_path.rename(new_file)
         self.entry.delete(0, len(new_file_name))
-        self.next_img_flag = True
+        self._next_img_flag = True
 
     def on_click_open_source_dir(self, _: Union[tk.Event, None]):
         img_path = self.widget_info.cur_img_path
         os.startfile(img_path.parent)
 
     def on_click_skip(self, _: Union[tk.Event, None]):
-        self.next_img_flag = True
+        self._next_img_flag = True
         self.entry.delete(0, len(self.widget_info.cur_img_path.name))
+        self.widget_info.previous_info = None
         return "break"  # ignore tab  # https://stackoverflow.com/questions/62366097/python-tk-setting-widget-focus-when-using-tab-key
 
     def on_hotkey_insert_file_name(self, _: Union[tk.Event, None]):
@@ -241,11 +283,14 @@ class ImageRenameApp(RenameFactory):
     def __init__(self, loop, img_path_list, **options):
         self.is_dead = False  # The app finished or not.
         self.loop = loop
-        from .template.base import Template
         RenameFactory.__init__(self, img_path_list, **options)
-        Template(self).render()  # load Template
+        config = self.config
+
+        from .template.base import Template
+        Template(self, engine=getattr(config, 'engine', None)).render()  # load Template
+
         self.root.protocol("WM_DELETE_WINDOW", self.close)  # override original function
-        self.interval = interval = options.get('interval', 1 / 40)
+        self.interval = interval = getattr(config, 'interval', 1 / 40)
         self.dict_task: Dict[str, asyncio.Task] = dict(
             main=loop.create_task(self.main(interval)),
             updater=loop.create_task(self.updater(interval)),

@@ -16,7 +16,7 @@ class Engine:
         Path(__file__).parent.parent / Path('template/plugins/default_hotkeys.py'),
     ]
 
-    def __init__(self, builtins: List = None,):
+    def __init__(self, builtins: List[Path] = None,):
         builtins = (builtins if builtins else []) + self.default_builtins
         self.template_builtins: List[ModuleType] = self.get_template_builtins(builtins)
 
