@@ -1,15 +1,19 @@
 from typing import List, Dict, TypeVar, Callable
 from image_rename.template.exceptions import HotkeyConflictWarning
 import warnings
-import abc
 from enum import Enum
 from image_rename.core import RenameFactory
-import functools
+from .library import Library
+from .node import (
+    NodeList, T_Node,
+    HotkeyNode, PanelNode,
+)
 import inspect
 
 
 class TokenType(Enum):
     HotKey = 0
+    Panel = 1
 
 
 class Token:
@@ -34,84 +38,43 @@ class Template:
     def render(self):
         self.nodelist.render(self.target)
 
-    def compile_nodelist(self) -> 'NodeList':
+    def compile_nodelist(self) -> NodeList:
         parser = Parser(self.engine.template_builtins)
         nodelist = parser.parse()
         return nodelist
 
 
 class Parser:
-    __slots__ = ('hotkeys',)
+    __slots__ = ('hotkeys', 'panels')
 
     def __init__(self, builtins=None, ):
-        self.hotkeys = self.init_library(builtins if builtins else [])
+        self.hotkeys, self.panels = self.init_library(builtins if builtins else [])
 
     @staticmethod
-    def init_library(lib_list: List) -> Dict:
+    def init_library(lib_list: List[Library]) -> List[Dict]:
         dict_hotkeys = {}
+        dict_panels = {}
         for lib in lib_list:
             for cur_key, (func, key_list) in lib.hotkeys.items():
                 if cur_key in dict_hotkeys:
                     warnings.warn(f'{lib!r} {cur_key}: {func.__name__} --> {dict_hotkeys[cur_key][0].__name__}', HotkeyConflictWarning, stacklevel=2)
             dict_hotkeys.update(lib.hotkeys)
-        return dict_hotkeys
+            dict_panels.update(lib.panels)
+        return [dict_hotkeys, dict_panels]
 
-    def parse(self) -> "NodeList":
+    def parse(self) -> NodeList:
         nodelist = NodeList()
         for name, (func, key_list) in self.hotkeys.items():
             args_list, *_others = inspect.getfullargspec(func)
             need_job_list = True if 'dict_job' in args_list else False
             self.extend_nodelist(nodelist, HotkeyNode(name, func, key_list, need_job_list), Token(TokenType.HotKey))
+
+        for name, func in self.panels.items():
+            self.extend_nodelist(nodelist, PanelNode(name, func), Token(TokenType.Panel))
         return nodelist
 
     @staticmethod
-    def extend_nodelist(nodelist: "NodeList", node: "T_Node", token: Token):
+    def extend_nodelist(nodelist: NodeList, node: T_Node, token: Token):
         # Set origin and token here since we can't modify the node __init__() method.
         node.token = token
         nodelist.append(node)
-
-
-class Node(abc.ABC):
-    __slots__ = ()
-    token = None
-
-    @abc.abstractmethod
-    def render(self, context):
-        ...
-
-    def __iter__(self):
-        yield self
-
-
-class HotkeyNode(Node):
-    __slots__ = ('token',
-                 'name', 'func', 'key_list',
-                 'need_job_list')
-
-    def __init__(self, name: str, func: Callable, key_list: List[str], need_job_list: bool):
-        self.name = name
-        self.func = func
-        self.key_list = key_list
-        self.need_job_list = need_job_list
-
-    def render(self, target: RenameFactory):
-        if not isinstance(self.key_list, list):
-            self.key_list = [self.key_list]
-        for key_name in self.key_list:
-            if self.need_job_list:
-                new_func = functools.wraps(self.func)(lambda tk_event:
-                                                      self.func(target, getattr(RenameFactory.on_hotkey_event, 'dict_job', lambda: None)),
-                                                      )
-            else:
-                new_func = functools.wraps(self.func)(lambda tk_event: self.func(target))
-            target.root.bind(key_name, new_func)
-
-
-T_Node = TypeVar('T_Node', bound=Node)
-
-
-class NodeList(list):
-    def render(self, target: RenameFactory):
-        for node in self:
-            if isinstance(node, Node):
-                node.render(target)
