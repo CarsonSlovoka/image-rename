@@ -6,7 +6,7 @@ from pathlib import Path
 from subprocess import Popen, PIPE, DEVNULL
 
 if '__file__' in globals():
-    PLUGIN_MS_PAINT = Path(__file__)
+    PLUGIN_MS_PAINT = Path(__file__)  # __file__ not in loader.exec_module
 
 register = template.Library(__name__)
 

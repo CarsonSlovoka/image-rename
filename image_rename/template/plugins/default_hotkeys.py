@@ -1,4 +1,5 @@
 from image_rename import template
+from image_rename.template.node import PanelNode
 from image_rename.core import ImageRenameApp, Event, JobState
 import tkinter.messagebox
 import os
@@ -23,6 +24,7 @@ def change_log(app: ImageRenameApp, dict_job: Dict[str, Tuple[int, Callable, Eve
     Save the information to the log file (the name before rename and after)
     You can click again to suspend or reopen it.
     """
+
     def main(run: bool):
         if not run:
             return
@@ -60,6 +62,7 @@ def history_log(app: ImageRenameApp, dict_job: Dict[str, Tuple[int, Callable, Ev
     Save the history which data is the Path of your first sees the image.
     You can click again to suspend or reopen it.
     """
+
     def main(run: bool):
         if not run:
             return
@@ -85,3 +88,11 @@ def history_log(app: ImageRenameApp, dict_job: Dict[str, Tuple[int, Callable, Ev
         Event.IMG_CHANGE, JobState.FOREVER
     )
     new_func()
+
+
+@register.hotkey('<F5>')
+def rebuild_all_panel(app: ImageRenameApp):
+    """
+    If you close the panel, you can use this hotkey to open it again.
+    """
+    app.template.render(target_type=PanelNode)

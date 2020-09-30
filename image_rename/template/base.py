@@ -1,8 +1,8 @@
-from typing import List, Dict, TypeVar, Callable
+from typing import List, Dict, TypeVar, Callable, Type
 from image_rename.template.exceptions import HotkeyConflictWarning
 import warnings
 from enum import Enum
-from image_rename.core import RenameFactory
+from image_rename.core import ImageRenameApp
 from .library import Library
 from .node import (
     NodeList, T_Node,
@@ -27,16 +27,16 @@ class Token:
 
 
 class Template:
-    __slots__ = ('target', 'engine', 'nodelist')
+    __slots__ = ('app', 'engine', 'nodelist')
 
-    def __init__(self, target: RenameFactory, engine=None):
+    def __init__(self, app: ImageRenameApp, engine=None):
         from .engine import Engine
-        self.target: RenameFactory = target
+        self.app: ImageRenameApp = app
         self.engine = Engine() if engine is None else engine
         self.nodelist: NodeList = self.compile_nodelist()
 
-    def render(self):
-        self.nodelist.render(self.target)
+    def render(self, target_type: Type = None):
+        self.nodelist.render(self.app, target_type)
 
     def compile_nodelist(self) -> NodeList:
         parser = Parser(self.engine.template_builtins)
@@ -69,8 +69,8 @@ class Parser:
             need_job_list = True if 'dict_job' in args_list else False
             self.extend_nodelist(nodelist, HotkeyNode(name, func, key_list, need_job_list), Token(TokenType.HotKey))
 
-        for name, func in self.panels.items():
-            self.extend_nodelist(nodelist, PanelNode(name, func), Token(TokenType.Panel))
+        for window_name, (func, icon_path) in self.panels.items():
+            self.extend_nodelist(nodelist, PanelNode(window_name, func, icon_path), Token(TokenType.Panel))
         return nodelist
 
     @staticmethod

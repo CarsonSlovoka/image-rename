@@ -1,5 +1,5 @@
 import tkinter as tk
-from typing import Union, List, Dict, Tuple, Callable, Any
+from typing import Union, List, Dict, Tuple, Callable
 from pathlib import Path
 from grid_extractor import show_img
 from .api.imagehelper import append_image_to_news
@@ -10,6 +10,8 @@ import os
 import types
 from dataclasses import dataclass, field
 from enum import Enum
+
+APP_ICON_PATH = Path(__file__).parent / Path('asset/icon/main.ico')
 
 
 def imread(file, flag=cv2.IMREAD_UNCHANGED):
@@ -29,12 +31,12 @@ def imread(file, flag=cv2.IMREAD_UNCHANGED):
 class TkMixin:
     __slots__ = ()
 
-    def get_widget(self, widget_name: str) -> Union[tk.Widget, None]:
+    def get_widget(self, widget_name: str, ignore_err_msg=False) -> Union[tk.Widget, None]:
         root: tk.Tk = getattr(self, 'root')
         if root.children.get(widget_name):
             return root.children[widget_name]
         else:
-            print(f'{KeyError(widget_name)}')
+            print(f'{KeyError(widget_name)}') if ignore_err_msg else None
             return None
 
 
@@ -93,7 +95,7 @@ class RenameFactory(EditBoxBase, TkMixin):
         self.__class__.on_hotkey_event.dict_job = dict()
 
     def init_ui(self):
-        self.root.iconbitmap(Path(__file__).parent / Path('asset/icon/main.ico'))
+        self.root.iconbitmap(APP_ICON_PATH)
         self.root.title('Rename Tool')
 
         self.canvas.pack()
@@ -196,10 +198,12 @@ class RenameFactory(EditBoxBase, TkMixin):
                         if hasattr(self.config, 'default_name_flag') and self.config.default_name_flag:
                             self.on_hotkey_insert_file_name(None)
                         self.on_hotkey_event(Event.IMG_CHANGE)
+                        self.update_panel(Event.IMG_CHANGE)
                         is_first_show = False
                     show_flag = False
 
                 self.on_hotkey_event(Event.NONE)
+                self.update_panel(Event.NONE)
 
                 if self._next_img_flag:
                     if self.config.clear_window:
@@ -230,6 +234,16 @@ class RenameFactory(EditBoxBase, TkMixin):
                 job()
                 if state == JobState.ONCE:
                     del dict_job[name]
+
+    def update_panel(self, cur_event: Event):
+        from .template.node import PanelBase
+        dict_panel: Dict[str, tk.Toplevel] = {k: v for k, v in filter(lambda kv: kv[0].startswith('!toplevel_'), self.root.children.items())}
+        if not dict_panel:
+            return
+        # dict_panel = dict_panel.get('children', {})
+        for window_name, panel in dict_panel.items():
+            panel: PanelBase
+            panel.update(event=cur_event)
 
     def on_click_commit(self, _: Union[tk.Event, None]):
         new_file_name = self.entry.get()
@@ -278,6 +292,7 @@ class RenameFactory(EditBoxBase, TkMixin):
 class ImageRenameApp(RenameFactory):
     __slots__ = ('loop', 'dict_task',
                  'interval',
+                 'template',
                  'is_dead',)
 
     def __init__(self, loop, img_path_list, **options):
@@ -287,7 +302,8 @@ class ImageRenameApp(RenameFactory):
         config = self.config
 
         from .template.base import Template
-        Template(self, engine=getattr(config, 'engine', None)).render()  # load Template
+        self.template = Template(self, engine=getattr(config, 'engine', None))
+        self.template.render()  # load Template
 
         self.root.protocol("WM_DELETE_WINDOW", self.close)  # override original function
         self.interval = interval = getattr(config, 'interval', 1 / 40)
