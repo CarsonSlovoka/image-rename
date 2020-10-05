@@ -1,4 +1,4 @@
-from typing import List, Dict, TypeVar, Callable, Type
+from typing import List, Dict, TypeVar, Callable, Type, Union
 from image_rename.core import ImageRenameApp, RenameFactory, Event
 from image_rename import APP_ICON_PATH
 import functools
@@ -67,16 +67,21 @@ class PanelNode(Node):
 
     def render(self, app: RenameFactory):
         widget_name = '!toplevel_' + self.window_name
-        if app.get_widget(widget_name, ignore_err_msg=True):
+        window: Union[tk.Toplevel, None] = app.get_widget(widget_name, ignore_err_msg=True)
+        if window:
+            if window.wm_state() == 'withdrawn':  # If the window is hidden, then show it again.
+                window.deiconify()
             return  # window already exists!
 
-        args_list, *_others = inspect.getfullargspec(self.func)
         parent = tk.Toplevel(app.root, name=widget_name)
         parent.title(self.window_name)
+        parent.grid_columnconfigure(0, weight=1)  # expand and fill ({n e w s}) the first widget.
+        parent.grid_rowconfigure(0, weight=1)
         if self.icon_path and self.icon_path.exists():
             parent.iconbitmap(self.icon_path)
         else:
             parent.iconbitmap(APP_ICON_PATH)
+        args_list, *_others = inspect.getfullargspec(self.func)
         self.func(parent, app) if 'app' in args_list else self.func(parent)
 
 

@@ -4,10 +4,10 @@ __description__ = "Rename the picture by looking through the human eye and typin
 
 from .core import (
     ImageRenameApp, APP_ICON_PATH,
-    imread,
+    imread, Event
 )
 
 from .api.utils import work_dir
 from .template.plugins.mspaint import PLUGIN_MS_PAINT
 from .template.engine import Engine
-
+from image_rename.template.node import PanelBase, HotkeyNode

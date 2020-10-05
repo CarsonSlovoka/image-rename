@@ -3,6 +3,7 @@ from typing import Union, List, Dict, Tuple, Callable
 from pathlib import Path
 from grid_extractor import show_img
 from .api.imagehelper import append_image_to_news
+from .api.tkmixins import TkMixin
 import cv2
 import numpy as np
 import asyncio
@@ -26,18 +27,6 @@ def imread(file, flag=cv2.IMREAD_UNCHANGED):
         file = str(file)
     np_img = cv2.imdecode(np.fromfile(file, dtype=np.uint8), flag)
     return np_img
-
-
-class TkMixin:
-    __slots__ = ()
-
-    def get_widget(self, widget_name: str, ignore_err_msg=False) -> Union[tk.Widget, None]:
-        root: tk.Tk = getattr(self, 'root')
-        if root.children.get(widget_name):
-            return root.children[widget_name]
-        else:
-            print(f'{KeyError(widget_name)}') if ignore_err_msg else None
-            return None
 
 
 class EditBoxBase:
