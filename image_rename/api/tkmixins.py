@@ -22,28 +22,34 @@ class TreeMixin:
     header: NamedTuple
     tree: ttk.Treeview
 
-    def build_scrollbar(self, parent):
-        vsb = ttk.Scrollbar(parent, orient='vertical', command=self.tree.yview)
-        hsb = ttk.Scrollbar(parent, orient='horizontal', command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set)
-        self.tree.configure(xscrollcommand=hsb.set)
+    def build_scrollbar(self, parent, tree: ttk.Treeview = None):
+        if tree is None:
+            tree = self.tree
+        vsb = ttk.Scrollbar(parent, orient='vertical', command=tree.yview)
+        hsb = ttk.Scrollbar(parent, orient='horizontal', command=tree.xview)
+        tree.configure(yscrollcommand=vsb.set)
+        tree.configure(xscrollcommand=hsb.set)
         vsb.grid(row=0, column=1, sticky='ns')
         hsb.grid(row=1, column=0, sticky='ew')
 
-    def adjust_column(self, row_data: Tuple):
+    def adjust_column(self, row_data: Tuple, tree: ttk.Treeview = None):
         """
         Decide the width of each column by the maximum string.
         """
+        if tree is None:
+            tree = self.tree
         for idx, col_string in enumerate(row_data):
             col_width = Font().measure(col_string)
-            if col_width > self.tree.column(self.header[idx], width=None):
-                self.tree.column(self.header[idx], width=col_width)
+            if col_width > tree.column(self.header[idx], width=None):
+                tree.column(self.header[idx], width=col_width)
 
-    def sort_by(self, col_name: str, is_descending: bool):
-        data_list = [(self.tree.set(child_id, col_name), child_id) for child_id in self.tree.get_children('')]
+    def sort_by(self, col_name: str, is_descending: bool, tree: ttk.Treeview = None):
+        if tree is None:
+            tree = self.tree
+        data_list = [(tree.set(child_id, col_name), child_id) for child_id in tree.get_children('')]
         data_list.sort(reverse=is_descending)
         for new_idx, (item_name, item_id) in enumerate(data_list):
-            self.tree.move(item_id, '', new_idx)
+            tree.move(item_id, '', new_idx)
 
         # switch the heading so it will sort in the opposite direction
-        self.tree.heading(col_name, command=lambda col=col_name: self.sort_by(col, (not is_descending)))
+        tree.heading(col_name, command=lambda col=col_name: self.sort_by(col, (not is_descending), tree))

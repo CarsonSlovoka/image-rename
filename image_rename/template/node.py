@@ -75,6 +75,8 @@ class PanelNode(Node):
 
         parent = tk.Toplevel(app.root, name=widget_name)
         parent.title(self.window_name)
+
+        # We let the first widget can expand and fill. If you have many widgets, you can build a Frame and contains all the widgets.
         parent.grid_columnconfigure(0, weight=1)  # expand and fill ({n e w s}) the first widget.
         parent.grid_rowconfigure(0, weight=1)
         if self.icon_path and self.icon_path.exists():

@@ -2,7 +2,7 @@ from typing import Tuple
 from pathlib import Path
 from image_rename import (
     Engine,
-    PLUGIN_MS_PAINT, PLUGIN_IFD_TAG
+    PLUGIN_MS_PAINT, PLUGIN_IFD_TAG, PLUGIN_IFD_TAG_V2,
 )
 
 dict_hotkey = dict(
@@ -21,7 +21,8 @@ else:
     engine = Engine([
         # Path(r"X:\...\customize_hotkey.py")
         PLUGIN_MS_PAINT,
-        PLUGIN_IFD_TAG,
+        # PLUGIN_IFD_TAG,
+        PLUGIN_IFD_TAG_V2,
         ])
 
 window_size = None  # (300, 400)

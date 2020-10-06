@@ -1,11 +1,11 @@
 """
-Show the information of IFD {EXIF, GPS}. combine all of it into the TreeView.
+Show the information of IFD {EXIF, GPS}. According to its type and put it to different TreeView.
 """
 
 from pathlib import Path
 
 if '__file__' in globals():
-    PLUGIN_IFD_TAG = Path(__file__)  # https://www.awaresystems.be/imaging/tiff/tifftags/privateifd.html
+    PLUGIN_IFD_TAG_V2 = Path(__file__)  # https://www.awaresystems.be/imaging/tiff/tifftags/privateifd.html
 
 try:
     import PIL.Image
@@ -20,11 +20,22 @@ from image_rename import ImageRenameApp, Event, template
 from image_rename.template.node import PanelBase
 import image_rename
 from image_rename.api.tkmixins import TreeMixin
-from typing import Callable, Tuple, NamedTuple, Union, List, Dict, Iterator
+from image_rename.api.utils import init_namedtuple
+from typing import Callable, Tuple, NamedTuple, Union, List, Dict
 import os
 import re
 
 register = template.Library(__name__)
+
+
+@init_namedtuple('init_style')
+class TTKStyle(NamedTuple):
+    LF_NORMAL = f'{__name__.split(".")[-1]}-Normal.TLabelframe'
+
+    def init_style(self):
+        style = ttk.Style()
+        style.configure(self.LF_NORMAL, background='black')
+        style.configure(f'{self.LF_NORMAL}.Label', foreground='#99FF00', background='blue', font=('courier', 15, 'bold'))
 
 
 def get_exif(file_path: Union[Path, PIL.Image.Image],
@@ -85,13 +96,14 @@ def get_exif(file_path: Union[Path, PIL.Image.Image],
     return result_list
 
 
-@register.panel(window_name='IFD TAG', icon_path=Path(image_rename.__file__).parent / Path('asset/icon/exif.ico'))
+@register.panel(window_name='IFD TAG2', icon_path=Path(image_rename.__file__).parent / Path('asset/icon/exif.ico'))
 def ifd_panel(parent: tk.Toplevel, app: ImageRenameApp):
     return IFDPanel(parent, app).build()  # Class must inherit PanelBase. Otherwise, update will not working.
 
 
 class IFDPanel(PanelBase, TreeMixin):
-    __slots__ = ('tree', 'parent', 'app',
+    __slots__ = ('exif_tree', 'gps_tree',
+                 'parent', 'app',
                  'regex',)
 
     class Header(NamedTuple):
@@ -108,7 +120,7 @@ class IFDPanel(PanelBase, TreeMixin):
             for val in self.to_tuple():
                 yield val
 
-    class Property(NamedTuple):
+    class EXIFProperty(NamedTuple):
         exif_version: str
         make: str
         file_name: str
@@ -120,58 +132,62 @@ class IFDPanel(PanelBase, TreeMixin):
         saturation: str
         sharpness: str
 
+    class GPSProperty(NamedTuple):
         latitude: str
         longitude: str
         altitude: str
 
-        def to_list(self):
-            return [(key, getattr(self, key))
-                    for key in dir(self.__class__)
-                    if not key.startswith('_') and key not in ('count', 'index') and not callable(getattr(self, key))]
-
-        def __iter__(self) -> Iterator[Tuple[str, str]]:
-            for val in self.to_list():
-                yield val
-
     header = Header()
-    prop = Property('Exif Version', 'Make by', 'File Name', 'Size (h, w)', 'DateTimeOriginal', 'ColorSpace',
+    prop_exif = EXIFProperty('Exif Version', 'Make by', 'File Name', 'Size (h, w)', 'DateTimeOriginal', 'ColorSpace',
+                             'Contrast', 'Saturation', 'Sharpness',
+                             )
 
-                    'Contrast', 'Saturation', 'Sharpness',
+    prop_gps = GPSProperty('Latitude', 'Longitude', 'Altitude', )
 
-                    'Latitude', 'Longitude', 'Altitude')
-
-    def __init__(self, parent: tk.Toplevel, app: ImageRenameApp, top_n=20):
+    def __init__(self, parent: tk.Toplevel, app: ImageRenameApp):
         super().__init__(parent)
         self.parent = parent
         self.app = app
-        self.tree = ttk.Treeview(self.parent,
-                                 show='headings',  # ignore the index column
-                                 columns=self.header.to_tuple(),
-                                 height=top_n  # numbers of row
-                                 )  # https://docs.python.org/3/library/tkinter.ttk.html
+
+        ttk_style = TTKStyle()
+
+        frame = ttk.Frame(self.parent)
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid(sticky='news')
+
+        lf_exif = ttk.Labelframe(frame, text='EXIF Tag', style=ttk_style.LF_NORMAL)
+        lf_gps = ttk.Labelframe(frame, text='GPS Tag', style=ttk_style.LF_NORMAL)
+        for lf in (lf_exif, lf_gps):
+            lf.grid_columnconfigure(0, weight=1)
+            lf.grid_rowconfigure(0, weight=1)
+            lf.grid(sticky='news')
+        self.exif_tree = ttk.Treeview(lf_exif, show='headings', columns=self.header.to_tuple(), height=10)
+        self.gps_tree = ttk.Treeview(lf_gps, show='headings', columns=self.header.to_tuple(), height=10)
         self.parent.protocol("WM_DELETE_WINDOW", lambda: self.parent.withdraw())  # hide window
         self.regex = re.compile(r"(?P<width>[0-9]+)x(?P<height>[0-9]+)\+(?P<xoffset>[0-9]+)\+(?P<offset_y>[0-9]+)")  # search 123*1+22+333
 
     def build(self):
-        for col, width in zip(self.header, (None, 100)):
-            text = col.replace('_', ' ').title()  # uppercase
-            self.tree.heading(col, text=text, command=lambda col_name=col: self.sort_by(col_name, is_descending=False))
-            # self.tree.column("name", width=150, anchor='e')
-            if width is None:
-                width = Font().measure(text)
-            self.tree.column(col, width=width)
+        for tree, prop in zip([self.exif_tree, self.gps_tree], [self.prop_exif, self.prop_gps]):
+            for col, width in zip(self.header, (None, 100)):
+                text = col.replace('_', ' ').title()  # uppercase
+                tree.heading(col, text=text, command=lambda col_name=col: self.sort_by(col_name, is_descending=False, tree=tree))
+                # self.tree.column("name", width=150, anchor='e')
+                if width is None:
+                    width = Font().measure(text)
+                tree.column(col, width=width)
 
-        self.tree.bind('<Double-Button>', self.select_item)  # https://www.python-course.eu/tkinter_events_binds.php
-        self.tree.grid(sticky='news')
-        self.build_scrollbar(self.parent)
+            tree.bind('<ButtonRelease-1>',  # https://www.python-course.eu/tkinter_events_binds.php
+                      lambda event, pro=prop, tree_view=tree: self.select_item(event, pro, tree_view))  # https://www.python-course.eu/tkinter_events_binds.php
+            tree.grid(sticky='news')
+            self.build_scrollbar(self.parent, tree)
 
     def update(self, event: Event, parent_update: Callable = None):
-        # parent_update()
-
         if event != Event.IMG_CHANGE:
             return
 
-        self.tree.delete(*self.tree.get_children())  # new empty tree, avoid write again.
+        for tree in (self.exif_tree, self.gps_tree):
+            tree.delete(*tree.get_children())  # new empty tree, avoid write again.
 
         img_path = self.app.widget_info.cur_img_path
         im: PIL.Image.Image = PIL.Image.open(str(img_path))
@@ -197,38 +213,41 @@ class IFDPanel(PanelBase, TreeMixin):
          gps_dop,
          color_space, contrast, saturation, sharpness) = result
 
-        prop = IFDPanel.Property(exif_version.decode('utf-8'), make, img_path.name,
-                                 f'{height}, {width}', data_time_original, color_space,
+        prop_gps = IFDPanel.GPSProperty(f'{gps_latitude_ref} {gps_latitude}',
+                                        f'{gps_longitude_ref} {gps_longitude}',
+                                        f'{gps_altitude_ref} {gps_altitude}')
 
-                                 contrast, saturation, sharpness,
+        prop_exif = IFDPanel.EXIFProperty(
+            exif_version.decode('utf-8'), make, img_path.name,
+            f'{height}, {width}', data_time_original, color_space,
+            contrast, saturation, sharpness,
+        )
+        for tree, prop_key, prop in ((self.exif_tree, self.prop_exif, prop_exif),
+                                     (self.gps_tree, self.prop_gps, prop_gps)):
+            for property_name, val in zip(prop_key, prop):
+                row_data = property_name, val
+                tree.insert("", "end", text=property_name, values=row_data)
+                self.adjust_column(row_data, tree)
 
-                                 f'{gps_latitude_ref} {gps_latitude}',
-                                 f'{gps_longitude_ref} {gps_longitude}',
-                                 f'{gps_altitude_ref} {gps_altitude}')
-
-        for key_row_data, row_data in zip(self.prop, prop):
-            _, property_name = key_row_data
-            _, value = row_data
-            self.tree.insert("", "end", text=property_name, values=(property_name, value))
-            self.adjust_column(row_data)
-
-        cur_width = sum([self.tree.column(header_name)['width'] for header_name in self.header.to_tuple()])
+        cur_width = max([sum([tree.column(header_name)['width'] for header_name in self.header.to_tuple()])
+                         for tree in (self.exif_tree, self.gps_tree)
+                         ])
         width, height, x_offset, y_offset = self.regex.match(self.parent.geometry()).groups()  # groupdict()
         self.parent.geometry(f'{cur_width}x{height}+{x_offset}+{y_offset}')
 
-    def select_item(self, event):
-        # cur_item: dict = self.tree.item(self.tree.focus())  # cur_item['text'] 'values'
-        query_item: Union[Tuple, str] = self.tree.item(self.tree.focus(), option='values')
+    def select_item(self, event: tk.Event,
+                    prop_class: Union[EXIFProperty, GPSProperty], tree: ttk.Treeview):
+        query_item: Union[Tuple, str] = tree.item(tree.focus(), option='values')
         if query_item == '':
             return
-        col: str = self.tree.identify_column(event.x)
+        col: str = tree.identify_column(getattr(event, 'x'))
         prop, val = query_item
         if col == '#1':
-            if prop == self.prop.file_name:
+            if isinstance(prop_class, IFDPanel.EXIFProperty) and prop == prop_class.file_name:
                 os.startfile(self.app.widget_info.cur_img_path)
             return
         # '#2'
-        if prop == self.prop.file_name:
+        if isinstance(prop_class, IFDPanel.EXIFProperty) and prop == prop_class.file_name:
             val = self.app.widget_info.cur_img_path.stem
-        self.tree.clipboard_clear()
-        self.tree.clipboard_append(val)
+        tree.clipboard_clear()
+        tree.clipboard_append(val)
