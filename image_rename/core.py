@@ -15,7 +15,7 @@ from enum import Enum
 APP_ICON_PATH = Path(__file__).parent / Path('asset/icon/main.ico')
 
 
-def imread(file, flag=cv2.IMREAD_UNCHANGED):
+def imread(file, flag=cv2.IMREAD_UNCHANGED) -> np.ndarray:
     """
     To fix the problem of the path contains Chinese.
     :param file: Path or str

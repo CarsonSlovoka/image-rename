@@ -8,6 +8,6 @@ from .core import (
 )
 
 from .api.utils import work_dir
-from .template.plugins.mspaint import PLUGIN_MS_PAINT
+from .template.plugins import *
 from .template.engine import Engine
 from image_rename.template.node import PanelBase, HotkeyNode

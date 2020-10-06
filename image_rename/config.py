@@ -1,6 +1,9 @@
 from typing import Tuple
 from pathlib import Path
-from image_rename import Engine, PLUGIN_MS_PAINT
+from image_rename import (
+    Engine,
+    PLUGIN_MS_PAINT, PLUGIN_IFD_TAG
+)
 
 dict_hotkey = dict(
     commit=['<Return>',  # Enter
@@ -18,6 +21,7 @@ else:
     engine = Engine([
         # Path(r"X:\...\customize_hotkey.py")
         PLUGIN_MS_PAINT,
+        PLUGIN_IFD_TAG,
         ])
 
 window_size = None  # (300, 400)

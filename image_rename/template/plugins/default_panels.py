@@ -17,7 +17,7 @@ register = template.Library(__name__)
     window_name='History',
     # icon_path=Path(r"...")
 )
-def my_panel(parent: tk.Toplevel, app: ImageRenameApp):
+def history_panel(parent: tk.Toplevel, app: ImageRenameApp):
     return HistoryPanel(parent, app).build()  # Class must inherit PanelBase. Otherwise, update will not working.
 
 
