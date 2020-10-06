@@ -10,4 +10,8 @@ from .core import (
 from .api.utils import work_dir
 from .template.plugins import *
 from .template.engine import Engine
-from image_rename.template.node import PanelBase, HotkeyNode
+from image_rename.template.node import (
+    PanelBase, PanelNode,
+    HotkeyNode,
+    ToolbarBase,
+)

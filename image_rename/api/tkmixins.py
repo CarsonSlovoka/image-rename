@@ -2,13 +2,18 @@ from tkinter import ttk
 import tkinter as tk
 from typing import Tuple, NamedTuple, Union
 from tkinter.font import Font
+import cv2
+import numpy as np
+from pathlib import Path
+from PIL import Image, ImageTk
 
 
 class TkMixin:
     __slots__ = ()
 
-    def get_widget(self, widget_name: str, ignore_err_msg=False) -> Union[tk.Widget, None]:
-        root: tk.Tk = getattr(self, 'root')
+    def get_widget(self, widget_name: str, ignore_err_msg=False, root: tk.Tk = None) -> Union[tk.Widget, None]:
+        if root is None:
+            root = getattr(self, 'root')
         if root.children.get(widget_name):
             return root.children[widget_name]
         else:
@@ -53,3 +58,37 @@ class TreeMixin:
 
         # switch the heading so it will sort in the opposite direction
         tree.heading(col_name, command=lambda col=col_name: self.sort_by(col, (not is_descending), tree))
+
+
+class TkImageMixin:
+
+    @staticmethod
+    def im_read(file, flag=cv2.IMREAD_UNCHANGED) -> np.ndarray:
+        """
+        To fix the problem of the path contains Chinese.
+        :param file: Path or str
+        :param flag:
+        """
+        if not Path(file).exists():
+            raise FileNotFoundError(f"{file}")
+        if isinstance(file, Path):
+            file = str(file)
+        np_img = cv2.imdecode(np.fromfile(file, dtype=np.uint8), flag)
+        return np_img
+
+    def resize(
+        self,
+        img: Union[Path, np.ndarray, Image.Image],
+        size: Tuple[int, int], **options
+    ) -> tk.PhotoImage:
+        if isinstance(img, Path):
+            img = self.im_read(img)
+
+        if isinstance(img, np.ndarray):
+            if img.ndim == 3 and img.shape[-1] >= 3:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB if img.shape[-1] == 3 else cv2.COLOR_BGRA2RGBA)
+            img = Image.fromarray(img)
+
+        pil_img: Image.Image = img
+        pil_img = pil_img.resize(size)
+        return ImageTk.PhotoImage(image=pil_img, name=options.get('name'))

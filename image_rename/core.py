@@ -226,7 +226,7 @@ class RenameFactory(EditBoxBase, TkMixin):
 
     def update_panel(self, cur_event: Event):
         from .template.node import PanelBase
-        dict_panel: Dict[str, tk.Toplevel] = {k: v for k, v in filter(lambda kv: kv[0].startswith('!toplevel_'), self.root.children.items())}
+        dict_panel: Dict[str, tk.Toplevel] = {k: v for k, v in filter(lambda kv: kv[0].startswith('!panel_'), self.root.children.items())}
         if not dict_panel:
             return
         # dict_panel = dict_panel.get('children', {})
@@ -292,7 +292,7 @@ class ImageRenameApp(RenameFactory):
 
         from .template.base import Template
         self.template = Template(self, engine=getattr(config, 'engine', None))
-        self.template.render()  # load Template
+        self.template.render()
 
         self.root.protocol("WM_DELETE_WINDOW", self.close)  # override original function
         self.interval = interval = getattr(config, 'interval', 1 / 40)

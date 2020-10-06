@@ -6,3 +6,11 @@ class InvalidTemplateLibrary(Exception):
 
 class HotkeyConflictWarning(Warning):
     ...
+
+
+class PanelConflictWarning(Warning):
+    ...
+
+
+class ToolbarConflictWarning(Warning):
+    ...
