@@ -87,6 +87,7 @@ DEMO
 =============
 
 .. image:: https://raw.githubusercontent.com/CarsonSlovoka/image-rename/release/demo/demo.png
+.. image:: https://raw.githubusercontent.com/CarsonSlovoka/image-rename/release/demo/demo_0.2.0.png
 
 REFERENCE
 =============
