@@ -146,7 +146,6 @@ class IFDPanel(PanelBase, TreeMixin):
 
     def __init__(self, parent: tk.Toplevel, app: ImageRenameApp):
         super().__init__(parent)
-        self.parent = parent
         self.app = app
 
         ttk_style = TTKStyle()
@@ -181,6 +180,10 @@ class IFDPanel(PanelBase, TreeMixin):
                       lambda event, pro=prop, tree_view=tree: self.select_item(event, pro, tree_view))  # https://www.python-course.eu/tkinter_events_binds.php
             tree.grid(sticky='news')
             self.build_scrollbar(self.parent, tree)
+
+        offset_x, offset_y = [int(_) for _ in self.app.root.geometry().split('+')[1:]]
+        offset_x -= self.parent.winfo_width()
+        self.parent.geometry(f'+{offset_x}+{offset_y}')
 
     def update(self, event: Event, parent_update: Callable = None):
         if event != Event.IMG_CHANGE:
@@ -232,8 +235,11 @@ class IFDPanel(PanelBase, TreeMixin):
         cur_width = max([sum([tree.column(header_name)['width'] for header_name in self.header.to_tuple()])
                          for tree in (self.exif_tree, self.gps_tree)
                          ])
-        width, height, x_offset, y_offset = self.regex.match(self.parent.geometry()).groups()  # groupdict()
-        self.parent.geometry(f'{cur_width}x{height}+{x_offset}+{y_offset}')
+        width, height, offset_x, offset_y = self.regex.match(self.parent.geometry()).groups()  # groupdict()
+
+        offset_x, offset_y = [int(_) for _ in self.app.root.geometry().split('+')[1:]]
+        offset_x -= cur_width
+        self.parent.geometry(f'{cur_width}x{height}+{offset_x}+{offset_y}')
 
     def select_item(self, event: tk.Event,
                     prop_class: Union[EXIFProperty, GPSProperty], tree: ttk.Treeview):

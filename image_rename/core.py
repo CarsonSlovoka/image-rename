@@ -122,8 +122,9 @@ class RenameFactory(EditBoxBase, TkMixin):
         self.put2canvas(tk.Button(text='Skip', command=lambda: self.on_click_skip(None),
                                   bg='brown', fg='white', font=(self.FONT_NAME, 12, 'bold')),
                         310, 180)
-        self.put2canvas(tk.Label(self.root, name='label_error_msg', text='', font=(self.FONT_NAME, 12, 'italic'), fg='red'),
-                        200, 220)
+        self.put2canvas(
+            tk.Label(self.root, name='label_error_msg', text='', font=(self.FONT_NAME, 12, 'italic'), fg='red'),
+            200, 220)
 
         self.put2canvas(tk.Label(self.root, name='label_abs_img_path', text='', font=(self.FONT_NAME, 12)),
                         40, 300)
@@ -132,6 +133,10 @@ class RenameFactory(EditBoxBase, TkMixin):
                       bg='brown', fg='white', font=(self.FONT_NAME, 12, 'bold'),
                       command=lambda: self.on_click_open_source_dir(None)),
             200, 350)
+        root = self.root
+        offset_x = (self.root.winfo_screenwidth() - root.winfo_width()) / 5
+        offset_y = (self.root.winfo_screenheight() - root.winfo_height()) / 4
+        self.root.geometry(f'+{int(offset_x)}+{int(offset_y)}')
         return entry
 
     def update_ui(self, widget_name, **options) -> tk.Widget:
@@ -162,7 +167,8 @@ class RenameFactory(EditBoxBase, TkMixin):
             self._next_img_flag = False
             is_first_show = True
             while await asyncio.sleep(interval, True):
-                if (cv2.getWindowProperty(self.IMG_WINDOW_NAME, cv2.WND_PROP_FULLSCREEN) == -1  # If the user closed the window, then show it again.
+                if (cv2.getWindowProperty(self.IMG_WINDOW_NAME,
+                                          cv2.WND_PROP_FULLSCREEN) == -1  # If the user closed the window, then show it again.
                         or show_flag):
                     img_cur = imread(img_path)
                     if display_n_img > 1:
@@ -170,12 +176,14 @@ class RenameFactory(EditBoxBase, TkMixin):
                             img_cur = cv2.cvtColor(img_cur, cv2.COLOR_GRAY2RGBA)
                         if highlight_color is not None:
                             img_cur = cv2.copyMakeBorder(img_cur,
-                                                         border_thickness, border_thickness, border_thickness, border_thickness,
+                                                         border_thickness, border_thickness, border_thickness,
+                                                         border_thickness,
                                                          cv2.BORDER_CONSTANT, value=highlight_color)
                     img_display: np.ndarray = img_cur if display_n_img == 1 else \
                         append_image_to_news(img_cur,
                                              [imread(_) for _ in
-                                              self.img_path_list[idx + 1:min(idx + display_n_img, n_total_img)] if idx + 1 < n_total_img],
+                                              self.img_path_list[idx + 1:min(idx + display_n_img, n_total_img)] if
+                                              idx + 1 < n_total_img],
                                              direction='r')
                     show_img(img_display, window_name=self.IMG_WINDOW_NAME,
                              window_size=window_size if window_size is not None else -1,
@@ -213,7 +221,8 @@ class RenameFactory(EditBoxBase, TkMixin):
             return
 
         dict_job = {k: v for k, v in [(k, v) for k, v in
-                                      sorted(dict_job.items(), key=lambda item: item[1][0])][::-1]  # sorted by priority: ascending
+                                      sorted(dict_job.items(), key=lambda item: item[1][0])][::-1]
+                    # sorted by priority: ascending
                     }
         self.__class__.on_hotkey_event.dict_job = dict_job
 
@@ -226,7 +235,8 @@ class RenameFactory(EditBoxBase, TkMixin):
 
     def update_panel(self, cur_event: Event):
         from .template.node import PanelBase
-        dict_panel: Dict[str, tk.Toplevel] = {k: v for k, v in filter(lambda kv: kv[0].startswith('!panel_'), self.root.children.items())}
+        dict_panel: Dict[str, tk.Toplevel] = {k: v for k, v in filter(lambda kv: kv[0].startswith('!panel_'),
+                                                                      self.root.children.items())}
         if not dict_panel:
             return
         # dict_panel = dict_panel.get('children', {})

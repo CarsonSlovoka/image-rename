@@ -66,6 +66,10 @@ class HistoryPanel(PanelBase, TreeMixin):
         self.tree.grid(sticky='news')
         self.build_scrollbar(self.parent)
 
+        offset_x, offset_y = [int(_) for _ in self.app.root.geometry().split('+')[1:]]
+        offset_y += self.parent.winfo_height() + 200
+        self.parent.geometry(f'+{offset_x}+{offset_y}')
+
     def update(self, event: Event, parent_update: Callable = None):
         # parent_update()
 

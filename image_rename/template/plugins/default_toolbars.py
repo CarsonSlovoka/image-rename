@@ -46,3 +46,7 @@ class MainToolBar(ToolbarBase):
         self.cmd_list[1] = self.render_all_panel
         self.cmd_list[2] = lambda: showinfo('App Version', __version__)
         self.init_buttons()
+
+        offset_x, offset_y = [int(_) for _ in self.app.root.geometry().split('+')[1:]]
+        offset_y -= self.parent.winfo_height() - 100
+        self.parent.geometry(f'+{offset_x}+{offset_y}')

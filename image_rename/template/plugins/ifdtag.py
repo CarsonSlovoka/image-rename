@@ -165,6 +165,10 @@ class IFDPanel(PanelBase, TreeMixin):
         self.tree.grid(sticky='news')
         self.build_scrollbar(self.parent)
 
+        offset_x, offset_y = [int(_) for _ in self.app.root.geometry().split('+')[1:]]
+        offset_x -= self.parent.winfo_width()
+        self.parent.geometry(f'+{offset_x}+{offset_y}')
+
     def update(self, event: Event, parent_update: Callable = None):
         # parent_update()
 
@@ -214,7 +218,10 @@ class IFDPanel(PanelBase, TreeMixin):
 
         cur_width = sum([self.tree.column(header_name)['width'] for header_name in self.header.to_tuple()])
         width, height, x_offset, y_offset = self.regex.match(self.parent.geometry()).groups()  # groupdict()
-        self.parent.geometry(f'{cur_width}x{height}+{x_offset}+{y_offset}')
+
+        offset_x, offset_y = [int(_) for _ in self.app.root.geometry().split('+')[1:]]
+        offset_x -= cur_width
+        self.parent.geometry(f'{cur_width}x{height}+{offset_x}+{offset_y}')
 
     def select_item(self, event):
         # cur_item: dict = self.tree.item(self.tree.focus())  # cur_item['text'] 'values'
