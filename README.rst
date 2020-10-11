@@ -88,5 +88,20 @@ DEMO
 
 .. image:: https://raw.githubusercontent.com/CarsonSlovoka/image-rename/release/demo/demo.png
 
+you can add other `plugins <https://github.com/CarsonSlovoka/image-rename/blob/release/image_rename/config.py#L21-L26>`_
+to see more information {[IFD]_, [EXIF]_  [GPS]_, ...}, like below:
+
+.. image:: https://raw.githubusercontent.com/CarsonSlovoka/image-rename/release/demo/demo_0.2.0.png
+
 REFERENCE
 =============
+
+
+FOOTNOTES
+=============
+
+.. [IFD] https://www.awaresystems.be/imaging/tiff/tifftags/privateifd.html
+
+.. [EXIF] `Exchangeable Image File Format <https://www.awaresystems.be/imaging/tiff/tifftags/privateifd/exif.html>`_
+
+.. [GPS]  `Global Positioning System tag <https://www.awaresystems.be/imaging/tiff/tifftags/privateifd/gps.html>`_
