@@ -1,3 +1,4 @@
+import image_rename
 from image_rename import template
 from image_rename.template.node import PanelBase
 from image_rename.core import ImageRenameApp, Event
@@ -15,7 +16,7 @@ register = template.Library(__name__)
 
 @register.panel(
     window_name='History',
-    # icon_path=Path(r"...")
+    icon_path=Path(image_rename.__file__).parent / Path('asset/icon/history.ico')  # if icon_path is None, then its icon is from the parent.
 )
 def history_panel(parent: tk.Toplevel, app: ImageRenameApp):
     return HistoryPanel(parent, app).build()  # Class must inherit PanelBase. Otherwise, update will not working.
@@ -67,7 +68,7 @@ class HistoryPanel(PanelBase, TreeMixin):
         self.build_scrollbar(self.parent)
 
         offset_x, offset_y = [int(_) for _ in self.app.root.geometry().split('+')[1:]]
-        offset_y += self.parent.winfo_height() + 200
+        offset_y += self.parent.winfo_height() + 300
         self.parent.geometry(f'+{offset_x}+{offset_y}')
 
     def update(self, event: Event, parent_update: Callable = None):
