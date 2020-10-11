@@ -10,6 +10,21 @@
 Release Note
 ==================
 
+0.2.0
+==================
+
+Create a template to customize your view.
+
+:features:
+    - Customize the hotkey by yourself. (default: MSPaint, IFD, EXIF, GPSTAG)
+    - Customize the panel by yourself. (default: HistoryPanel)
+    - Customize the toolbar by yourself.
+
+
+0.1.1
+==================
+- Fix that the text will increase after skipping.
+
 0.1.0
 ==================
 Add hotkey and more options for the config file.
