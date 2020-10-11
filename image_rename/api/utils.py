@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from pathlib import Path
 import os
-from typing import Callable
+from typing import Callable, NamedTuple, Type
 
 
 @contextmanager
@@ -33,3 +33,25 @@ def after_end(cb_fun: Callable):
         yield cb_fun
     finally:
         cb_fun()
+
+
+def init_namedtuple(init_func_name):
+    """
+    Run the job when the class is born.
+
+    USAGE::
+
+        @init_namedtuple('init_xxx')
+        class MyClass(NamedTuple):
+            def init_xxx(self):
+                ...
+    """
+    def wrap(class_obj: Type[NamedTuple]):
+        def new_instance(*args, **kwargs):
+            instance_obj = class_obj(*args, **kwargs)
+            init_func = getattr(instance_obj, init_func_name)
+            if init_func:
+                init_func()
+            return instance_obj
+        return new_instance
+    return wrap
